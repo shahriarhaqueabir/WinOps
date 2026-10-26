@@ -1,0 +1,996 @@
+package app
+
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/UniversalOps/internal/secops"
+	sysopsPkg "github.com/shahriarhaqueabir/UniversalOps/internal/sysops"
+)
+
+// SecOps exposes security operations bindings to the frontend.
+type SecOps struct {
+	eventBus *common.EventBus
+}
+
+// NewSecOps creates a new SecOps facade.
+func NewSecOps(eventBus *common.EventBus) *SecOps {
+	return &SecOps{eventBus: eventBus}
+}
+
+// GetFirewallRules returns current firewall rules.
+func (s *SecOps) GetFirewallRules() []FirewallRule {
+	defer common.RecoverPanic()
+	rules, err := secops.GetFirewallRules()
+	if err != nil {
+		return []FirewallRule{}
+	}
+	out := make([]FirewallRule, 0, len(rules))
+	for _, r := range rules {
+		out = append(out, FirewallRule{
+			Name:       r.Name,
+			Direction:  r.Direction,
+			Action:     r.Action,
+			Protocol:   r.Protocol,
+			LocalPort:  r.LocalPort,
+			RemotePort: r.RemotePort,
+			RemoteIP:   r.RemoteIP,
+			Profile:    r.Profile,
+			Enabled:    r.Enabled,
+			IsHighRisk: r.IsHighRisk,
+		})
+	}
+	return out
+}
+
+// GetUsers returns local user accounts.
+func (s *SecOps) GetUsers() []UserInfo {
+	defer common.RecoverPanic()
+	users, err := secops.GetUsers()
+	if err != nil {
+		return []UserInfo{}
+	}
+	out := make([]UserInfo, 0, len(users))
+	for _, u := range users {
+		out = append(out, UserInfo{
+			Username:  u.Username,
+			FullName:  u.FullName,
+			SID:       u.SID,
+			Group:     u.Group,
+			IsAdmin:   u.IsAdmin,
+			IsEnabled: u.IsEnabled,
+		})
+	}
+	return out
+}
+
+// GetListeningPorts returns all listening network ports.
+func (s *SecOps) GetListeningPorts() []ListeningPort {
+	defer common.RecoverPanic()
+	ports, err := secops.GetListeningPorts()
+	if err != nil {
+		return []ListeningPort{}
+	}
+	out := make([]ListeningPort, 0, len(ports))
+	for _, p := range ports {
+		out = append(out, ListeningPort{
+			Port:        p.Port,
+			Protocol:    p.Protocol,
+			ProcessName: p.ProcessName,
+			PID:         p.PID,
+			State:       p.State,
+			IsExternal:  p.IsExternal,
+			ServiceName: p.ServiceName,
+			RiskLevel:   p.RiskLevel,
+		})
+	}
+	return out
+}
+
+// GetDefenderStatus returns Windows Defender status.
+func (s *SecOps) GetDefenderStatus() DefenderStatus {
+	defer common.RecoverPanic()
+	status, err := secops.GetDefenderStatus()
+	if err != nil {
+		return DefenderStatus{}
+	}
+	return DefenderStatus{
+		Enabled:            status.Enabled,
+		UpToDate:           status.UpToDate,
+		SignatureAge:       status.SignatureAge,
+		LastScan:           status.LastScan,
+		RealTimeProtection: status.RealTimeProtection,
+		CloudProtection:    status.CloudProtection,
+		AMServiceEnabled:   status.AMServiceEnabled,
+		AntispywareEnabled: status.AntispywareEnabled,
+		NISEnabled:         status.NISEnabled,
+		QuickScanAge:       status.QuickScanAge,
+		FullScanAge:        status.FullScanAge,
+		ThreatsDetected:    status.ThreatsDetected,
+	}
+}
+
+// GetScheduledTasks returns scheduled tasks.
+func (s *SecOps) GetScheduledTasks() []ScheduledTask {
+	defer common.RecoverPanic()
+	tasks, err := secops.GetScheduledTasks()
+	if err != nil {
+		return []ScheduledTask{}
+	}
+	out := make([]ScheduledTask, 0, len(tasks))
+	for _, t := range tasks {
+		out = append(out, ScheduledTask{
+			Name:    t.Name,
+			Status:  t.Status,
+			NextRun: t.NextRun,
+			LastRun: t.LastRun,
+			Author:  t.Author,
+			Trigger: t.Trigger,
+		})
+	}
+	return out
+}
+
+// GetSecurityEvents returns recent security event log entries.
+func (s *SecOps) GetSecurityEvents() []SecurityEvent {
+	defer common.RecoverPanic()
+	events, err := secops.GetSecurityEvents()
+	if err != nil {
+		return []SecurityEvent{}
+	}
+	out := make([]SecurityEvent, 0, len(events))
+	for _, e := range events {
+		out = append(out, SecurityEvent{
+			ID:        e.ID,
+			Level:     e.Level,
+			Provider:  e.Provider,
+			Time:      e.Time,
+			Message:   e.Message,
+			Important: e.Important,
+		})
+	}
+	return out
+}
+
+// SetFirewallRuleHandshake requests a safety handshake for a firewall rule change.
+func (s *SecOps) SetFirewallRuleHandshake(name string, enable bool) common.ActionPreview {
+	defer common.RecoverPanic()
+	actionName := "Disable Firewall Rule"
+	command := fmt.Sprintf("netsh advfirewall firewall set rule name=\"%s\" new enable=no", name)
+	if enable {
+		actionName = "Enable Firewall Rule"
+		command = fmt.Sprintf("netsh advfirewall firewall set rule name=\"%s\" new enable=yes", name)
+	}
+
+	id := common.GetHandshakeRegistry().Register("", "SetFirewallRule", command, map[string]interface{}{
+		"name":   name,
+		"enable": enable,
+	})
+
+	return common.ActionPreview{
+		HandshakeID: id,
+		Action:      actionName,
+		Command:     command,
+		Description: fmt.Sprintf("%s: '%s'", actionName, name),
+		Risks:       []string{"May disrupt active network connections", "Potential security surface change"},
+		Rollback:    "Can be toggled back manually via the same interface.",
+	}
+}
+
+// executeApplyHardening runs the actual remediation logic.
+func (s *SecOps) executeApplyHardening(checkName string) common.SecActionResult {
+	var err error
+	var msg string
+
+	if common.IsWindows() {
+		switch checkName {
+		case "SMBv1 disabled":
+			err = common.HiddenCommand("powershell", "-Command", "Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force").Run()
+			msg = "SMBv1 has been disabled."
+		case "Guest account disabled":
+			err = common.HiddenCommand("net", "user", "Guest", "/active:no").Run()
+			msg = "Guest account has been disabled."
+		case "Firewall enabled":
+			err = common.HiddenCommand("netsh", "advfirewall", "set", "allprofiles", "state", "on").Run()
+			msg = "Windows Firewall enabled on all profiles."
+		default:
+			return common.SecActionResult{Success: false, Error: "Unknown hardening action: " + checkName}
+		}
+	}
+
+	if err != nil {
+		return common.SecActionResult{Success: false, Error: err.Error()}
+	}
+	return common.SecActionResult{Success: true, Message: msg}
+}
+
+// executeSetFirewallRuleState enables or disables a firewall rule.
+func (s *SecOps) executeSetFirewallRuleState(name string, enable bool) bool {
+	common.LogInfo("Setting firewall rule %s enabled=%v", name, enable)
+	err := secops.SetFirewallRuleState(name, enable)
+	if err != nil {
+		common.LogWarn("SetFirewallRuleState failed: %v", err)
+		return false
+	}
+
+	action := "disabled"
+	if enable {
+		action = "enabled"
+	}
+	if s.eventBus != nil {
+		s.eventBus.Emit(common.NewEvent(
+			common.CatSecurity,
+			common.EventInfo,
+			"secops",
+			"Firewall rule changed",
+			fmt.Sprintf("Firewall rule '%s' %s", name, action),
+		))
+	}
+	return true
+}
+
+// GetSecurityScore computes a security posture score from existing data sources.
+func (s *SecOps) GetSecurityScore() SecurityScore {
+	defer common.RecoverPanic()
+	score := secops.ComputeSecurityScore()
+	return SecurityScore{
+		Score:           score.Score,
+		Grade:           score.Grade,
+		Breakdown:       score.Breakdown,
+		Recommendations: score.Recommendations,
+	}
+}
+
+// GetFirewallStatus returns the global firewall on/off status and per-profile status.
+func (s *SecOps) GetFirewallStatus() FirewallStatus {
+	defer common.RecoverPanic()
+	profiles, err := secops.GetFirewallProfiles()
+	if err != nil {
+		return FirewallStatus{
+			Profiles: []FirewallProfile{},
+		}
+	}
+	out := make([]FirewallProfile, 0, len(profiles))
+	enabled := false
+	for _, p := range profiles {
+		out = append(out, FirewallProfile{
+			Name:    p.Name,
+			Enabled: p.Enabled,
+		})
+		if p.Enabled {
+			enabled = true
+		}
+	}
+	return FirewallStatus{
+		Enabled:  enabled,
+		Profiles: out,
+	}
+}
+
+// GetRisks returns a list of detected security risks.
+func (s *SecOps) GetRisks() []RiskInfo {
+	defer common.RecoverPanic()
+	var risks []RiskInfo
+	dangerousPorts := map[int]string{3389: "RDP", 445: "SMB", 23: "Telnet"}
+
+	// ── Check listening ports for exposed services ──
+	ports, pErr := secops.GetListeningPorts()
+	if pErr == nil {
+		for _, p := range ports {
+			if p.IsExternal {
+				if svc, ok := dangerousPorts[p.Port]; ok {
+					risks = append(risks, RiskInfo{
+						Category:       "Network",
+						Severity:       "critical",
+						Title:          fmt.Sprintf("%s exposed on port %d", svc, p.Port),
+						Description:    fmt.Sprintf("%s service is listening on all interfaces (port %d). This is a common attack vector.", svc, p.Port),
+						Recommendation: fmt.Sprintf("Close or restrict external access to port %d. Use firewall rules to limit access to trusted IPs only.", p.Port),
+					})
+				} else {
+					risks = append(risks, RiskInfo{
+						Category:       "Network",
+						Severity:       "medium",
+						Title:          fmt.Sprintf("External listening port %d (%s)", p.Port, p.ProcessName),
+						Description:    fmt.Sprintf("Port %d is bound to all interfaces via %s. Verify this is expected.", p.Port, p.ProcessName),
+						Recommendation: "Review whether this service needs to be externally accessible.",
+					})
+				}
+			}
+		}
+	}
+
+	// ── Check firewall rules for high-risk entries ──
+	rules, fErr := secops.GetFirewallRules()
+	if fErr == nil {
+		highRisk := 0
+		for _, r := range rules {
+			if r.IsHighRisk {
+				highRisk++
+			}
+		}
+		if highRisk > 0 {
+			risks = append(risks, RiskInfo{
+				Category:       "Firewall",
+				Severity:       "high",
+				Title:          fmt.Sprintf("%d high-risk firewall rule(s)", highRisk),
+				Description:    "Firewall rules allow traffic from any IP on sensitive ports. This creates an open attack surface.",
+				Recommendation: "Tighten firewall rules to restrict access to specific source IPs.",
+			})
+		}
+	}
+
+	// ── Check user accounts ──
+	users, uErr := secops.GetUsers()
+	if uErr == nil {
+		adminCount := 0
+		for _, u := range users {
+			if u.IsAdmin && u.IsEnabled {
+				adminCount++
+			}
+		}
+		if adminCount > 2 {
+			risks = append(risks, RiskInfo{
+				Category:       "Identity",
+				Severity:       "medium",
+				Title:          fmt.Sprintf("%d administrator accounts detected", adminCount),
+				Description:    "Too many admin accounts increase the risk of privilege escalation.",
+				Recommendation: "Reduce to 2 or fewer admin accounts. Apply the Principle of Least Privilege.",
+			})
+		}
+	}
+
+	// ── Check Defender status ──
+	defender, dErr := secops.GetDefenderStatus()
+	if dErr == nil {
+		if !defender.UpToDate {
+			risks = append(risks, RiskInfo{
+				Category:       "Defender",
+				Severity:       "high",
+				Title:          "Defender signatures are outdated",
+				Description:    fmt.Sprintf("Last signature update was %s. Outdated definitions miss known threats.", defender.SignatureAge),
+				Recommendation: "Run Windows Update or trigger a manual Defender signature update.",
+			})
+		}
+		if defender.ThreatsDetected > 0 {
+			risks = append(risks, RiskInfo{
+				Category:       "Defender",
+				Severity:       "critical",
+				Title:          fmt.Sprintf("%d threat(s) detected by Defender", defender.ThreatsDetected),
+				Description:    "Windows Defender has detected active threats on this system.",
+				Recommendation: "Review and remediate detected threats immediately in Windows Security.",
+			})
+		}
+	}
+
+	// ── Check security events for failed logins ──
+	events, eErr := secops.GetSecurityEvents()
+	if eErr == nil {
+		failedLogins := 0
+		for _, e := range events {
+			if e.ID == 4625 {
+				failedLogins++
+			}
+		}
+		if failedLogins > 10 {
+			risks = append(risks, RiskInfo{
+				Category:       "Identity",
+				Severity:       "high",
+				Title:          fmt.Sprintf("%d failed login attempts detected", failedLogins),
+				Description:    "A spike in failed logins may indicate a brute-force attack.",
+				Recommendation: "Investigate the source IPs, enable account lockout policies, and consider enabling MFA.",
+			})
+		}
+	}
+
+	return risks
+}
+
+// GetSecuritySummary returns a unified security posture overview.
+// It collects data from firewall, defender, ports, users, and events,
+// then generates a text summary with categorized risks and recommendations.
+func (s *SecOps) GetSecuritySummary() SecuritySummary {
+	defer common.RecoverPanic()
+	summary := secops.GetSecuritySummary()
+	return SecuritySummary{
+		Score:           summary.Score,
+		Summary:         summary.Summary,
+		Risks:           summary.Risks,
+		Recommendations: summary.Recommendations,
+		AnalyzedAt:      summary.AnalyzedAt,
+	}
+}
+
+// ── Phase 2 Bound Methods ─────────────────────────────────────────────────────
+
+// GetPasswordPolicy returns the system password policy.
+func (s *SecOps) GetPasswordPolicy() PasswordPolicy {
+	defer common.RecoverPanic()
+	p, err := secops.GetPasswordPolicy()
+	if err != nil {
+		return PasswordPolicy{}
+	}
+	return PasswordPolicy{
+		MaxAge:           p.MaxAge,
+		MinLength:        p.MinLength,
+		Complexity:       p.Complexity,
+		LockoutThreshold: p.LockoutThreshold,
+		LockoutDuration:  p.LockoutDuration,
+	}
+}
+
+// GetFailedLogins returns recent failed login attempts.
+func (s *SecOps) GetFailedLogins() []FailedLogin {
+	defer common.RecoverPanic()
+	logins, err := secops.GetFailedLogins()
+	if err != nil {
+		return []FailedLogin{}
+	}
+	out := make([]FailedLogin, 0, len(logins))
+	for _, l := range logins {
+		out = append(out, FailedLogin{
+			Time:     l.Time,
+			Username: l.Username,
+			SourceIP: l.SourceIP,
+			Count:    l.Count,
+		})
+	}
+	return out
+}
+
+// GetAccountLockouts returns locked accounts.
+func (s *SecOps) GetAccountLockouts() []LockedAccount {
+	defer common.RecoverPanic()
+	locked, err := secops.GetAccountLockouts()
+	if err != nil {
+		return []LockedAccount{}
+	}
+	out := make([]LockedAccount, 0, len(locked))
+	for _, l := range locked {
+		out = append(out, LockedAccount{
+			Username:    l.Username,
+			LockedSince: l.LockedSince,
+		})
+	}
+	return out
+}
+
+// GetDiskEncryptionStatus returns disk encryption status.
+func (s *SecOps) GetDiskEncryptionStatus() []DiskEncryption {
+	defer common.RecoverPanic()
+	disks, err := secops.GetDiskEncryptionStatus()
+	if err != nil {
+		return []DiskEncryption{}
+	}
+	out := make([]DiskEncryption, 0, len(disks))
+	for _, d := range disks {
+		out = append(out, DiskEncryption{
+			Volume:    d.Volume,
+			Encrypted: d.Encrypted,
+			Method:    d.Method,
+			Status:    d.Status,
+		})
+	}
+	return out
+}
+
+// GetSecureBootStatus returns secure boot status.
+func (s *SecOps) GetSecureBootStatus() SecureBoot {
+	defer common.RecoverPanic()
+	sb, err := secops.GetSecureBootStatus()
+	if err != nil {
+		return SecureBoot{}
+	}
+	return SecureBoot{
+		Enabled: sb.Enabled,
+		State:   sb.State,
+	}
+}
+
+// GetRunningServices returns running system services.
+func (s *SecOps) GetRunningServices() []SystemService {
+	defer common.RecoverPanic()
+	services, err := secops.GetRunningServices()
+	if err != nil {
+		return []SystemService{}
+	}
+	out := make([]SystemService, 0, len(services))
+	for _, sv := range services {
+		out = append(out, SystemService{
+			Name:        sv.Name,
+			DisplayName: sv.DisplayName,
+			Status:      sv.Status,
+			StartupType: sv.StartupType,
+		})
+	}
+	return out
+}
+
+// GetTLSCertificates returns TLS certificate info.
+func (s *SecOps) GetTLSCertificates() []TLSCertificate {
+	defer common.RecoverPanic()
+	certs, err := secops.GetTLSCertificates()
+	if err != nil {
+		return []TLSCertificate{}
+	}
+	out := make([]TLSCertificate, 0, len(certs))
+	for _, c := range certs {
+		out = append(out, TLSCertificate{
+			Subject:    c.Subject,
+			Issuer:     c.Issuer,
+			NotAfter:   c.NotAfter,
+			KeySize:    c.KeySize,
+			IsExpiring: c.IsExpiring,
+			DaysLeft:   c.DaysLeft,
+		})
+	}
+	return out
+}
+
+// GetPublicExposure returns externally-facing ports.
+func (s *SecOps) GetPublicExposure() []PublicExposure {
+	defer common.RecoverPanic()
+	exposed, err := secops.GetPublicExposure()
+	if err != nil {
+		return []PublicExposure{}
+	}
+	out := make([]PublicExposure, 0, len(exposed))
+	for _, e := range exposed {
+		out = append(out, PublicExposure{
+			Port:        e.Port,
+			Protocol:    e.Protocol,
+			ProcessName: e.ProcessName,
+			Severity:    e.Severity,
+		})
+	}
+	return out
+}
+
+// GetHardeningChecks returns hardening check results.
+func (s *SecOps) GetHardeningChecks() []HardeningCheck {
+	defer common.RecoverPanic()
+	checks, err := secops.GetHardeningChecks()
+	if err != nil {
+		return []HardeningCheck{}
+	}
+	out := make([]HardeningCheck, 0, len(checks))
+	for _, c := range checks {
+		out = append(out, HardeningCheck{
+			Category:    c.Category,
+			Check:       c.Check,
+			Passed:      c.Passed,
+			Severity:    c.Severity,
+			Remediation: c.Remediation,
+		})
+	}
+	return out
+}
+
+// GetSSHConfig returns SSH configuration.
+func (s *SecOps) GetSSHConfig() SSHConfig {
+	defer common.RecoverPanic()
+	sc, err := secops.GetSSHConfig()
+	if err != nil {
+		return SSHConfig{}
+	}
+	return SSHConfig{
+		PermitRootLogin:        sc.PermitRootLogin,
+		PasswordAuthentication: sc.PasswordAuthentication,
+		PubkeyAuthentication:   sc.PubkeyAuthentication,
+		X11Forwarding:          sc.X11Forwarding,
+		MaxAuthTries:           sc.MaxAuthTries,
+	}
+}
+
+// GetPrivilegeEvents returns privilege escalation events.
+func (s *SecOps) GetPrivilegeEvents() []PrivilegeEvent {
+	defer common.RecoverPanic()
+	events, err := secops.GetPrivilegeEvents()
+	if err != nil {
+		return []PrivilegeEvent{}
+	}
+	out := make([]PrivilegeEvent, 0, len(events))
+	for _, e := range events {
+		out = append(out, PrivilegeEvent{
+			Time:      e.Time,
+			Username:  e.Username,
+			Privilege: e.Privilege,
+			Process:   e.Process,
+		})
+	}
+	return out
+}
+
+// GetEventTimeline returns merged chronological security events.
+func (s *SecOps) GetEventTimeline() []SecTimelineEvent {
+	defer common.RecoverPanic()
+	events, err := secops.GetEventTimeline()
+	if err != nil {
+		return []SecTimelineEvent{}
+	}
+	out := make([]SecTimelineEvent, 0, len(events))
+	for _, e := range events {
+		out = append(out, SecTimelineEvent{
+			Time:     e.Time,
+			Type:     e.Type,
+			Detail:   e.Detail,
+			Severity: e.Severity,
+		})
+	}
+	return out
+}
+
+// RunAudit runs a comprehensive security audit and returns the result.
+func (s *SecOps) RunAudit() SecurityAuditResult {
+	defer common.RecoverPanic()
+	return s.RunSecurityAuditChecklist()
+}
+
+// RunSecurityAuditChecklist runs a one-click security audit.
+func (s *SecOps) RunSecurityAuditChecklist() SecurityAuditResult {
+	defer common.RecoverPanic()
+	result, err := secops.RunSecurityAuditChecklist()
+	if err != nil {
+		return SecurityAuditResult{}
+	}
+	items := make([]AuditCheckItem, 0, len(result.Items))
+	for _, i := range result.Items {
+		items = append(items, AuditCheckItem{
+			Category:    i.Category,
+			Check:       i.Check,
+			Passed:      i.Passed,
+			Description: i.Description,
+			Remediation: i.Remediation,
+		})
+	}
+
+	out := SecurityAuditResult{
+		ID:        fmt.Sprintf("sec-audit-%d", time.Now().Unix()),
+		Score:     result.Score,
+		Total:     result.Total,
+		Passed:    result.Passed,
+		Failed:    result.Failed,
+		Items:     items,
+		Timestamp: result.Timestamp,
+	}
+
+	// PERSIST: Save to reports table
+	storage := common.GetStorage()
+	if storage != nil {
+		data, marshalErr := json.Marshal(out)
+		if marshalErr != nil {
+			common.LogError("SecOps: failed to marshal audit report: %v", marshalErr)
+		}
+		if err := storage.InsertReport(common.ReportRecord{
+			ID:        out.ID,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Type:      "security",
+			Score:     out.Score,
+			DataJSON:  string(data),
+		}); err != nil {
+			common.LogError("SecOps: failed to persist audit report: %v", err)
+		}
+	}
+
+	return out
+}
+
+// ListHistoricalSecurityReports returns summary of all persisted security audits.
+func (s *SecOps) ListHistoricalSecurityReports() []common.ReportRecord {
+	defer common.RecoverPanic()
+	storage := common.GetStorage()
+	if storage == nil {
+		return []common.ReportRecord{}
+	}
+	reports, _ := storage.ListReportsByType("security")
+	return reports
+}
+
+// GetHistoricalSecurityReport retrieves a specific security audit by ID.
+func (s *SecOps) GetHistoricalSecurityReport(id string) (SecurityAuditResult, error) {
+	defer common.RecoverPanic()
+	storage := common.GetStorage()
+	if storage == nil {
+		return SecurityAuditResult{}, fmt.Errorf("storage unavailable")
+	}
+	r, err := storage.GetReport(id)
+	if err != nil || r == nil {
+		return SecurityAuditResult{}, fmt.Errorf("report not found")
+	}
+	var res SecurityAuditResult
+	err = json.Unmarshal([]byte(r.DataJSON), &res)
+	return res, err
+}
+
+// IsolateHost requests a safety handshake for isolating the host.
+func (s *SecOps) IsolateHost(confirm bool, autoExpireSeconds int) common.ActionPreview {
+	defer common.RecoverPanic()
+	command := "netsh advfirewall set allprofiles firewallpolicy blockinbound,blockoutbound"
+	id := common.GetHandshakeRegistry().Register("", "IsolateHost", command, map[string]interface{}{
+		"confirm":           confirm,
+		"autoExpireSeconds": autoExpireSeconds,
+	})
+
+	return common.ActionPreview{
+		HandshakeID: id,
+		Action:      "Isolate Host",
+		Command:     command,
+		Description: "Sever all inbound and outbound network connectivity except for essential management traffic.",
+		Risks:       []string{"Loss of network connectivity", "May disrupt active SSH or remote management sessions", "Potential for local lockout if not carefully configured"},
+		Rollback:    fmt.Sprintf("Isolation rule will automatically expire in %d seconds if configured.", autoExpireSeconds),
+	}
+}
+
+// executeIsolateHost isolates the host from the network.
+func (s *SecOps) executeIsolateHost(confirm bool, autoExpireSeconds int) common.SecActionResult {
+	result, err := secops.IsolateHost(confirm, autoExpireSeconds)
+	if err != nil {
+		common.LogWarn("IsolateHost failed: %v", err)
+		return common.SecActionResult{Success: false, Error: err.Error()}
+	}
+	return *result
+}
+
+// KillProcess requests a safety handshake for terminating a process.
+func (s *SecOps) KillProcess(pid int) common.ActionPreview {
+	defer common.RecoverPanic()
+	command := fmt.Sprintf("taskkill /F /PID %d", pid)
+	id := common.GetHandshakeRegistry().Register("", "KillProcess", command, map[string]interface{}{"pid": pid})
+
+	return common.ActionPreview{
+		HandshakeID: id,
+		Action:      "Kill Process",
+		Command:     command,
+		Description: fmt.Sprintf("Forcefully terminate process with PID %d", pid),
+		Risks:       []string{"Unsaved data in the application may be lost", "System instability if a critical service is terminated"},
+		Rollback:    "Cannot be undone. Application must be restarted manually.",
+	}
+}
+
+// executeKillProcess force-kills a process by PID.
+func (s *SecOps) executeKillProcess(pid int) common.SecActionResult {
+	result, err := secops.KillProcess(pid)
+	if err != nil {
+		common.LogWarn("KillProcess failed: %v", err)
+		return common.SecActionResult{Success: false, Error: err.Error()}
+	}
+	return *result
+}
+
+// KillProcessTree requests a safety handshake for terminating a process and its children.
+func (s *SecOps) KillProcessTree(pid int) common.ActionPreview {
+	defer common.RecoverPanic()
+	command := fmt.Sprintf("Get-Process -Id %d | Stop-Process -Force", pid)
+	id := common.GetHandshakeRegistry().Register("", "KillProcessTree", command, map[string]interface{}{"pid": pid})
+
+	return common.ActionPreview{
+		HandshakeID: id,
+		Action:      "Kill Process Tree",
+		Command:     command,
+		Description: fmt.Sprintf("Forcefully terminate process with PID %d and ALL its child processes", pid),
+		Risks:       []string{"Unsaved data in the application or its sub-processes may be lost", "System instability if critical parent/child services are terminated"},
+		Rollback:    "Cannot be undone. Applications must be restarted manually.",
+	}
+}
+
+// executeKillProcessTree force-kills a process tree by parent PID.
+func (s *SecOps) executeKillProcessTree(pid int) common.SecActionResult {
+	err := sysopsPkg.KillProcessTree(int32(pid))
+	if err != nil {
+		common.LogWarn("KillProcessTree failed: %v", err)
+		return common.SecActionResult{Success: false, Error: err.Error()}
+	}
+	return common.SecActionResult{Success: true, Message: fmt.Sprintf("Process tree for PID %d successfully terminated", pid)}
+}
+
+// BlockIP requests a safety handshake for blocking an IP address.
+func (s *SecOps) BlockIP(ip string) common.ActionPreview {
+	defer common.RecoverPanic()
+	command := fmt.Sprintf("netsh advfirewall firewall add rule name=\"Block %s\" dir=in action=block remoteip=%s", ip, ip)
+	id := common.GetHandshakeRegistry().Register("", "BlockIP", command, map[string]interface{}{"ip": ip})
+
+	return common.ActionPreview{
+		HandshakeID: id,
+		Action:      "Block IP Address",
+		Command:     command,
+		Description: fmt.Sprintf("Add a host-level firewall rule to block all traffic from: %s", ip),
+		Risks:       []string{"May block legitimate traffic if IP is spoofed or shared", "Increases firewall rule complexity"},
+		Rollback:    "Can be removed manually via the Firewall management tab.",
+	}
+}
+
+// executeBlockIP blocks an IP address via firewall.
+func (s *SecOps) executeBlockIP(ip string) common.SecActionResult {
+	result, err := secops.BlockIP(ip)
+	if err != nil {
+		common.LogWarn("BlockIP failed: %v", err)
+		return common.SecActionResult{Success: false, Error: err.Error()}
+	}
+	return *result
+}
+
+// DisableAccount requests a safety handshake for disabling a local user account.
+func (s *SecOps) DisableAccount(username string) common.ActionPreview {
+	defer common.RecoverPanic()
+	command := fmt.Sprintf("net user %s /active:no", username)
+	id := common.GetHandshakeRegistry().Register("", "DisableAccount", command, map[string]interface{}{"username": username})
+
+	return common.ActionPreview{
+		HandshakeID: id,
+		Action:      "Disable Account",
+		Command:     command,
+		Description: fmt.Sprintf("Instantly disable the local user account: '%s'", username),
+		Risks:       []string{"User will be unable to log in", "May disrupt active sessions or scheduled tasks running under this account"},
+		Rollback:    "Can be re-enabled via the Identity & Access tab or Computer Management.",
+	}
+}
+
+// executeDisableAccount disables a local user account.
+func (s *SecOps) executeDisableAccount(username string) common.SecActionResult {
+	result, err := secops.DisableAccount(username)
+	if err != nil {
+		common.LogWarn("DisableAccount failed: %v", err)
+		return common.SecActionResult{Success: false, Error: err.Error()}
+	}
+	return *result
+}
+
+// ListForensics returns all forensic snapshots.
+func (s *SecOps) ListForensics() []common.ForensicRecord {
+	defer common.RecoverPanic()
+	storage := common.GetStorage()
+	if storage == nil {
+		return []common.ForensicRecord{}
+	}
+	records, err := storage.ListForensics()
+	if err != nil {
+		return []common.ForensicRecord{}
+	}
+	return records
+}
+
+// GetForensic returns a full forensic snapshot by ID.
+func (s *SecOps) GetForensic(id string) common.ForensicRecord {
+	defer common.RecoverPanic()
+	storage := common.GetStorage()
+	if storage == nil {
+		return common.ForensicRecord{}
+	}
+	r, err := storage.GetForensic(id)
+	if err != nil || r == nil {
+		return common.ForensicRecord{}
+	}
+	return *r
+}
+
+// ForensicDiff holds the results of comparing two forensic snapshots.
+type ForensicDiff struct {
+	NewProcesses  []string `json:"new_processes"`
+	GoneProcesses []string `json:"gone_processes"`
+	NewConns      []string `json:"new_connections"`
+	SnapshotA     string   `json:"snapshot_a"`
+	SnapshotB     string   `json:"snapshot_b"`
+}
+
+// DiffForensics compares two snapshots and identifies structural changes.
+func (s *SecOps) DiffForensics(idA, idB string) (ForensicDiff, error) {
+	defer common.RecoverPanic()
+	storage := common.GetStorage()
+	if storage == nil {
+		return ForensicDiff{}, fmt.Errorf("storage unavailable")
+	}
+
+	snapA, errA := storage.GetForensic(idA)
+	snapB, errB := storage.GetForensic(idB)
+	if errA != nil || errB != nil || snapA == nil || snapB == nil {
+		return ForensicDiff{}, fmt.Errorf("failed to retrieve snapshots")
+	}
+
+	// ── Deep Process Diff ──
+	type proc struct {
+		Id          int    `json:"Id"`
+		ProcessName string `json:"ProcessName"`
+		Path        string `json:"Path"`
+	}
+	type conn struct {
+		LocalAddress  string `json:"LocalAddress"`
+		LocalPort     int    `json:"LocalPort"`
+		RemoteAddress string `json:"RemoteAddress"`
+		RemotePort    int    `json:"RemotePort"`
+	}
+
+	var dataA, dataB map[string]interface{}
+	_ = json.Unmarshal([]byte(snapA.DataJSON), &dataA)
+	_ = json.Unmarshal([]byte(snapB.DataJSON), &dataB)
+
+	var listA, listB []proc
+	_ = json.Unmarshal([]byte(dataA["processes"].(string)), &listA)
+	_ = json.Unmarshal([]byte(dataB["processes"].(string)), &listB)
+
+	// Build process map for A: key is Name:Path (PID excluded as it changes on restart)
+	mapA := make(map[string]bool)
+	for _, p := range listA {
+		key := fmt.Sprintf("%s|%s", p.ProcessName, p.Path)
+		mapA[key] = true
+	}
+
+	diff := ForensicDiff{SnapshotA: idA, SnapshotB: idB}
+	for _, p := range listB {
+		key := fmt.Sprintf("%s|%s", p.ProcessName, p.Path)
+		if !mapA[key] {
+			diff.NewProcesses = append(diff.NewProcesses, fmt.Sprintf("%s (%s)", p.ProcessName, p.Path))
+		}
+	}
+
+	// ── Connection Diff ──
+	var connsA, connsB []conn
+	_ = json.Unmarshal([]byte(dataA["connections"].(string)), &connsA)
+	_ = json.Unmarshal([]byte(dataB["connections"].(string)), &connsB)
+
+	connMapA := make(map[string]bool)
+	for _, c := range connsA {
+		key := fmt.Sprintf("%s:%d->%s:%d", c.LocalAddress, c.LocalPort, c.RemoteAddress, c.RemotePort)
+		connMapA[key] = true
+	}
+	for _, c := range connsB {
+		key := fmt.Sprintf("%s:%d->%s:%d", c.LocalAddress, c.LocalPort, c.RemoteAddress, c.RemotePort)
+		if !connMapA[key] && c.RemoteAddress != "0.0.0.0" && c.RemoteAddress != "::" {
+			diff.NewConns = append(diff.NewConns, key)
+		}
+	}
+
+	return diff, nil
+}
+
+// CaptureEvidence requests a safety handshake for collecting forensic evidence.
+func (s *SecOps) CaptureEvidence() common.ActionPreview {
+	defer common.RecoverPanic()
+	command := "Forensic Snapshot (Process List, Connections, Environment)"
+	id := common.GetHandshakeRegistry().Register("", "CaptureEvidence", command, nil)
+
+	return common.ActionPreview{
+		HandshakeID: id,
+		Action:      "Capture Evidence",
+		Command:     command,
+		Description: "Perform a high-density snapshot of volatile system state (processes, connections, memory strings).",
+		Risks:       []string{"Temporary CPU spike during collection", "Privacy risk: will collect metadata from all running processes"},
+		Rollback:    "Non-destructive. Collected evidence can be deleted manually.",
+	}
+}
+
+// executeCaptureEvidence collects forensic evidence into a summary.
+func (s *SecOps) executeCaptureEvidence() common.SecActionResult {
+	result, err := secops.CaptureEvidence()
+	if err != nil {
+		common.LogWarn("CaptureEvidence failed: %v", err)
+		return common.SecActionResult{Success: false, Error: err.Error()}
+	}
+	return *result
+}
+
+// ExportForensicBundle requests a safety handshake for exporting evidence.
+func (s *SecOps) ExportForensicBundle(snapshotID string) common.ActionPreview {
+	defer common.RecoverPanic()
+	command := fmt.Sprintf("Export snapshot %s to local archive", snapshotID)
+	id := common.GetHandshakeRegistry().Register("", "ExportForensicBundle", command, map[string]interface{}{"id": snapshotID})
+
+	return common.ActionPreview{
+		HandshakeID: id,
+		Action:      "Export Forensic Bundle",
+		Command:     command,
+		Description: fmt.Sprintf("Package and compress captured evidence snapshot %s into a portable JSON archive.", snapshotID),
+		Risks:       []string{"Disk space consumption", "Exposure risk if bundle is stored in an unencrypted location"},
+		Rollback:    "Non-destructive. Delete the resulting bundle manually.",
+	}
+}
+
+// executeExportForensicBundle exports evidence to a file.
+func (s *SecOps) executeExportForensicBundle(snapshotID string) common.SecActionResult {
+	result, err := secops.ExportForensicBundle(snapshotID)
+	if err != nil {
+		common.LogWarn("ExportForensicBundle failed: %v", err)
+		return common.SecActionResult{Success: false, Error: err.Error()}
+	}
+	return *result
+}

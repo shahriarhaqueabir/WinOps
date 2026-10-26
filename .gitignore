@@ -1,0 +1,127 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build output
+dist/
+dist-test/
+build/bin/
+
+# Wails auto-generated bindings (regenerated on wails dev/build)
+wailsjs/
+cmd/opsforall-gui/frontend/wailsjs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+opsforall-gui.log
+
+# Database
+opsforall.db
+opsforall.db-shm
+*.db
+*.db-shm
+*.db-wal
+universalops.db-wal
+universalops.db-shm
+
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Vendor
+vendor/
+
+# Coverage
+coverage
+coverage.out
+coverage.txt
+coverage.html
+coverage_devops
+coverage_secops
+coverage_sysops
+test_cov
+cmd/opsforall-gui/nul
+nul
+test.err
+vet.err
+
+# Internal / agent / audit artifacts (not for public distribution)
+npm-audit.json
+.agents/
+.memory/
+.playwright-mcp/
+.aiexclude
+graphify-out/
+attached_assets/
+docs/superpowers/
+plans/
+tests/e2e/artifacts/
+
+# OpenCode IDE config (local paths, API keys — never track)
+agents.json
+models.json
+
+# IDE / tool config
+.qodo/
+
+# Backup directories
+cmd/opsforall-gui.bak/
+
+# Build artifacts
+cmd/opsforall-gui/frontend/src/assets/
+
+# Runtime data
+data/lhm/
+data/.onboarded
+data/baseline.json
+logs/
+outputs/
+profiles/
+
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+.pytest_cache/
+
+# Personal/developer scripts (not for distribution)
+scripts/fix-path.ps1
+scripts/build.sh
+scripts/release.sh
+scripts/release-gh.sh
+
+# NOTE: scripts/package-scoop.ps1 and scripts/package-homebrew.ps1 are intentionally
+# NOT ignored — release.yml's publish job invokes package-scoop.ps1 in CI, so it must
+# exist in the checkout. package-homebrew.ps1 is kept tracked for manual macOS releases.
+
+# Internal / research docs (not user-facing)
+docs/MustHaves.md
+docs/SEO_STRATEGY.md
+docs/ToolsCommands.md
+docs/collector-architecture.md
+docs/reviewprompt.md
+
+# Cross-platform build artifacts
+nul
+tests/e2e/__pycache__/
+tests/e2e/.pytest_cache/

@@ -1,0 +1,432 @@
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Library, ChevronRight,
+  Zap, Terminal, Search,
+  RefreshCw, CheckCircle2, XCircle, Clock, ShieldCheck, Copy, ListTree
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useBackend } from '@/hooks/useBackend'
+import { SectionBriefing } from '@/components/ui/SectionBriefing'
+import { toast } from 'sonner'
+import {
+  StepResult,
+  isStepResult,
+  shellPayloadOf,
+  formatDurationNs,
+  formatTimestamp,
+  formatValue,
+  getResultSummary,
+  resultToRows,
+} from '@/lib/workflowResults'
+
+interface WorkflowStep {
+  id: string
+  label: string
+  description: string
+  command: string
+  expected_outcome: string
+  result?: any
+  error?: string
+}
+
+interface Workflow {
+  id: string
+  name: string
+  description: string
+  category: string
+  why: string
+  risks: string[]
+  typical_values: string
+  steps: WorkflowStep[]
+}
+
+export function WorkflowCenter() {
+  const { call } = useBackend()
+  const [selectedWf, setSelectedWf] = useState<Workflow | null>(null)
+  const [activeStepIdx, setActiveStepIdx] = useState<number | null>(null)
+  const [isLive, setIsLive] = useState(false)
+  const [search, setSearch] = useState('')
+  const [activeCategory, setActiveCategory] = useState<string>('all')
+
+  const { data: workflows = [], isLoading } = useQuery<Workflow[]>({
+    queryKey: ['workflows'],
+    queryFn: async () => (await call('WorkflowAPI.ListWorkflows')) as Workflow[] || []
+  })
+
+  const categories = ['all', ...new Set(workflows.map(w => w.category))]
+
+  const handleExecute = async () => {
+    if (!selectedWf) return
+    const id = toast.loading(`Executing ${selectedWf.name}...`)
+    try {
+      const result = await call('WorkflowAPI.ExecuteWorkflow', selectedWf.id) as Workflow
+      setSelectedWf(result)
+      setIsLive(true)
+      toast.success(`${selectedWf.name} completed`, { id })
+    } catch (err: any) {
+      toast.error(err?.message || 'Execution failed', { id })
+    }
+  }
+
+  const handleClear = () => {
+    setSelectedWf(null)
+    setActiveStepIdx(null)
+    setIsLive(false)
+  }
+
+  const filtered = workflows.filter(w => {
+    const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase()) ||
+      w.description.toLowerCase().includes(search.toLowerCase())
+    const matchesCategory = activeCategory === 'all' || w.category === activeCategory
+    return matchesSearch && matchesCategory
+  })
+
+  return (
+    <div className="flex flex-col h-full bg-[var(--color-bg)] animate-in fade-in duration-500 overflow-hidden">
+      {/* Header */}
+      <div className="py-8 border-b border-[var(--color-border)] bg-[var(--color-panel-2)]/50 px-10 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent border border-accent/20">
+               <Library size={18} />
+            </div>
+            <h1 className="text-sm font-black text-[var(--color-text)] uppercase tracking-[0.25em]">Ops Library</h1>
+          </div>
+          <p className="text-3xl font-bold text-[var(--color-text)] tracking-tight">Workflow Center</p>
+          <p className="text-[var(--color-text-dim)] text-xs font-semibold uppercase tracking-widest mt-2">Reusable operational sequences for high-fidelity system diagnostics</p>
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Library List */}
+        <div className="w-80 border-r border-[var(--color-border)] bg-[var(--color-panel)] flex flex-col">
+          <div className="p-4 border-b border-[var(--color-border)]/50">
+            <div className="relative group">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint group-focus-within:text-accent transition-colors" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search workflows..."
+                className="w-full bg-[var(--color-bg)] border border-border rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-text focus:outline-none focus:border-accent transition-all"
+              />
+            </div>
+          </div>
+          {/* Category filter bar */}
+          {categories.length > 1 && (
+            <div className="px-4 pb-3 pt-2 flex flex-wrap gap-1.5 border-b border-[var(--color-border)]/30">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all",
+                    activeCategory === cat
+                      ? "bg-accent/15 border-accent/40 text-accent"
+                      : "bg-transparent border-white/10 text-text-faint hover:border-white/30 hover:text-white"
+                  )}
+                >
+                  {cat === 'all' ? 'All' : cat}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {isLoading ? (
+               <div className="flex flex-col items-center justify-center py-10 opacity-30">
+                 <RefreshCw size={24} className="animate-spin mb-2" />
+                 <p className="text-[10px] font-black uppercase tracking-widest">Loading Library...</p>
+               </div>
+            ) : filtered.map(wf => (
+              <button
+                key={wf.id}
+                onClick={() => { setSelectedWf(wf); setActiveStepIdx(null); }}
+                className={cn(
+                  "w-full text-left p-4 rounded-2xl transition-all border group",
+                  selectedWf?.id === wf.id
+                    ? "bg-accent/10 border-accent/30 shadow-lg"
+                    : "bg-panel-2/50 border-transparent hover:border-white/10 hover:bg-panel-2"
+                )}
+              >
+                <p className={cn("text-xs font-black uppercase tracking-widest mb-1 flex items-center gap-2", selectedWf?.id === wf.id ? "text-accent" : "text-white")}>
+                  {wf.name}
+                  {wf.category && (
+                    <span className="text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-white/10 text-text-faint">{wf.category}</span>
+                  )}
+                </p>
+                <p className="text-[10px] text-text-dim font-medium leading-relaxed line-clamp-2">{wf.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: Selected Workflow Workspace */}
+        <div className="flex-1 overflow-y-auto bg-[var(--color-bg)]/30 relative">
+          {!selectedWf ? (
+            <div className="flex flex-col items-center justify-center h-full opacity-20 pointer-events-none">
+              <Library size={120} className="text-accent mb-6" />
+              <p className="text-xl font-black uppercase tracking-[0.3em] text-white">Select a workflow</p>
+              <p className="text-sm font-bold text-text-dim mt-2 tracking-widest">Select an entry from the library to begin discovery</p>
+            </div>
+          ) : (
+            <div className="p-10 space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
+              <SectionBriefing
+                title={selectedWf.name}
+                objective={selectedWf.description}
+                checklist={selectedWf.steps.map(s => s.label)}
+                why={selectedWf.why}
+                risks={selectedWf.risks}
+                typicalValues={selectedWf.typical_values}
+                recommendedActions={["Run 'Dry Run' review first", "Verify network isolation if required"]}
+              />
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-text-faint flex items-center gap-2">
+                    <Terminal size={14} /> {isLive ? 'Live Execution Pipeline' : 'Execution Pipeline (Dry Run)'}
+                  </h4>
+                  <div className={cn(
+                    "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                    isLive ? "bg-accent/10 border-accent/30 text-accent" : "bg-success/10 border-success/30 text-success"
+                  )}>
+                    {isLive ? 'Live Session Active' : 'Safe to Review'}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {selectedWf.steps.map((step, idx) => (
+                    <div
+                      key={step.id}
+                      className={cn(
+                        "p-6 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer",
+                        activeStepIdx === idx ? "bg-panel-2 border-accent/50 shadow-2xl scale-[1.01]" : "bg-panel-2/40 border-white/5 hover:border-white/10"
+                      )}
+                      onClick={() => setActiveStepIdx(idx)}
+                    >
+                      <div className="flex items-start justify-between gap-6 relative z-10">
+                        <div className="flex gap-5 min-w-0">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-colors relative",
+                            activeStepIdx === idx ? "bg-accent text-white border-white/20 shadow-[0_0_20px_rgba(var(--color-accent-rgb),0.4)]" : "bg-panel-3 text-text-faint border-white/5",
+                            step.result && "border-success/50",
+                            step.error && "border-danger/50"
+                          )}>
+                            {step.error ? (
+                              <XCircle size={18} className="text-danger animate-in zoom-in" />
+                            ) : step.result ? (
+                              <CheckCircle2 size={18} className="text-success animate-in zoom-in" />
+                            ) : (
+                              <span className="text-sm font-black italic">{idx + 1}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-black text-white uppercase tracking-widest">{step.label}</p>
+                            <p className="text-[11px] text-text-dim mt-1 font-medium leading-relaxed">{step.description}</p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[9px] font-black uppercase text-accent tracking-tighter mb-1">Expected Outcome</p>
+                          <p className="text-[10px] text-success font-bold italic">{step.expected_outcome}</p>
+                        </div>
+                      </div>
+
+                      {activeStepIdx === idx && (
+                        <div className="mt-6 pt-6 border-t border-white/5 animate-in slide-in-from-top-2 duration-300 space-y-4">
+                           <div>
+                             <p className="text-[9px] font-black uppercase text-text-faint tracking-widest mb-2 flex items-center gap-2">
+                               <Zap size={10} className="text-warning" /> Primary Native Command
+                             </p>
+                             <div className="bg-black/40 rounded-xl p-4 font-mono text-xs text-warning border border-warning/20 shadow-inner">
+                               {step.command}
+                             </div>
+                           </div>
+
+                           {step.error && (
+                             <div className="animate-in fade-in zoom-in-95 duration-300">
+                               <p className="text-[9px] font-black uppercase text-danger tracking-widest mb-2 flex items-center gap-2">
+                                 Execution Error
+                               </p>
+                               <div className="bg-danger/10 rounded-xl p-4 font-mono text-xs text-danger border border-danger/20">
+                                 {step.error}
+                               </div>
+                             </div>
+                           )}
+
+                           {step.result && (() => {
+                             const env: StepResult | null = isStepResult(step.result) ? step.result : null
+                             const shellPayload = shellPayloadOf(env ? env.data : step.result)
+                             const data = env ? env.data : step.result
+                             const failed = env ? env.status === 'error' : Boolean(step.error)
+                             const rows = resultToRows(shellPayload ? undefined : data)
+                             const summary = env ? getResultSummary(env) : ''
+                             const durationNs = env ? env.duration_ns : (step.result as any)?.Duration
+                             const rawCommand = shellPayload
+                               ? (env ? env.data.Command : (step.result as any).Command)
+                               : step.command
+                             const copyResult = () => {
+                               navigator.clipboard?.writeText(JSON.stringify(data, null, 2))
+                                 .then(() => toast.success('Result copied to clipboard'))
+                                 .catch(() => toast.error('Failed to copy result'))
+                             }
+
+                             return (
+                               <div className="animate-in fade-in zoom-in-95 duration-300">
+                                 <div className="flex items-center justify-between mb-2">
+                                   <p className={cn(
+                                     "text-[9px] font-black uppercase tracking-widest flex items-center gap-2",
+                                     failed ? "text-danger" : "text-success"
+                                   )}>
+                                     {failed
+                                       ? <XCircle size={10} className="text-danger" />
+                                       : <CheckCircle2 size={10} className="text-success" />}
+                                     Execution Result
+                                     {env ? (
+                                       <span className={cn(
+                                         "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border",
+                                         failed
+                                           ? "text-danger border-danger/30 bg-danger/10"
+                                           : "text-success border-success/30 bg-success/10"
+                                       )}>
+                                         {env.status}
+                                       </span>
+                                     ) : shellPayload ? (
+                                       <span className="text-text-faint font-mono text-[8px] tracking-wider">
+                                         shell output
+                                       </span>
+                                     ) : null}
+                                   </p>
+                                   {env && (
+                                     <button
+                                       onClick={copyResult}
+                                       className="inline-flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-wider text-text-faint hover:text-accent transition-colors px-2 py-1 rounded-md border border-white/5 hover:border-accent/30"
+                                     >
+                                       <Copy size={10} /> Copy
+                                     </button>
+                                   )}
+                                 </div>
+
+                                 {summary && !shellPayload && (
+                                   <p className={cn(
+                                     "text-xs font-bold mb-2 px-3 py-2 rounded-lg border",
+                                     failed
+                                       ? "text-danger bg-danger/5 border-danger/20"
+                                       : "text-text-dim bg-panel-3/60 border-white/5"
+                                   )}>
+                                     {summary}
+                                   </p>
+                                 )}
+
+                                 {shellPayload ? (
+                                   <>
+                                     <div className="bg-[#0a0a0f] rounded-xl p-5 font-mono text-[11px] text-text leading-relaxed border border-white/10 max-h-128 overflow-y-auto shadow-inner">
+                                       <div className="whitespace-pre-wrap break-all">
+                                         {shellPayload.Output}
+                                       </div>
+                                     </div>
+                                     <div className="flex flex-wrap items-center gap-4 mt-2.5">
+                                       <span className={cn(
+                                         "inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border",
+                                         shellPayload.ExitCode === 0
+                                           ? "text-success border-success/30 bg-success/5"
+                                           : "text-danger border-danger/30 bg-danger/5"
+                                       )}>
+                                         <ShieldCheck size={10} />
+                                         Exit {shellPayload.ExitCode}
+                                       </span>
+                                       <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-text-faint">
+                                         <Clock size={10} />
+                                         {formatDurationNs(durationNs)}
+                                       </span>
+                                       {env?.timestamp && (
+                                         <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-text-faint">
+                                           <RefreshCw size={10} />
+                                           {formatTimestamp(env.timestamp)}
+                                         </span>
+                                       )}
+                                       <span className="text-[8px] font-mono text-text-faint/50 truncate max-w-50">
+                                         {rawCommand}
+                                       </span>
+                                     </div>
+                                   </>
+                                 ) : env ? (
+                                   <>
+                                     {rows.length > 0 ? (
+                                       <div className="rounded-xl border border-white/10 overflow-hidden max-h-60 overflow-y-auto">
+                                         <table className="w-full text-left">
+                                           <tbody>
+                                             {rows.map((row, i) => (
+                                               <tr key={i} className={cn(
+                                                 "border-b border-white/5 last:border-0",
+                                                 i % 2 === 0 ? "bg-panel-3/40" : "bg-transparent"
+                                               )}>
+                                                 <td className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-text-faint whitespace-nowrap align-top w-1/3">
+                                                   {row.key}
+                                                 </td>
+                                                 <td className="px-3 py-1.5 text-[10px] font-mono text-text whitespace-pre-wrap break-all align-top">
+                                                   {formatValue(row.value)}
+                                                 </td>
+                                               </tr>
+                                             ))}
+                                           </tbody>
+                                         </table>
+                                       </div>
+                                     ) : (
+                                       <div className="bg-success/5 rounded-xl p-4 font-mono text-[10px] text-success/90 border border-success/20 max-h-60 overflow-y-auto whitespace-pre leading-relaxed">
+                                         {typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
+                                       </div>
+                                     )}
+                                     <div className="flex flex-wrap items-center gap-4 mt-2.5">
+                                       <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-text-faint">
+                                         <Clock size={10} />
+                                         {formatDurationNs(durationNs)}
+                                       </span>
+                                       {typeof env.items === 'number' && env.items > 0 && (
+                                         <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-text-faint">
+                                           <ListTree size={10} />
+                                           {env.items} record{env.items === 1 ? '' : 's'}
+                                         </span>
+                                       )}
+                                       {env.timestamp && (
+                                         <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-text-faint">
+                                           <RefreshCw size={10} />
+                                           {formatTimestamp(env.timestamp)}
+                                         </span>
+                                       )}
+                                     </div>
+                                   </>
+                                 ) : (
+                                   <div className="bg-success/5 rounded-xl p-4 font-mono text-[10px] text-success/90 border border-success/20 max-h-60 overflow-y-auto whitespace-pre leading-relaxed">
+                                     {typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
+                                   </div>
+                                 )}
+                               </div>
+                             )})()}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-10 flex gap-4">
+                  <button
+                    onClick={handleExecute}
+                    className="flex-1 py-6 bg-accent text-white rounded-[2rem] font-black uppercase tracking-[0.3em] shadow-[0_0_50px_rgba(var(--color-accent-rgb),0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 group"
+                  >
+                    Execute Workflow <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                  </button>
+                  <button
+                    onClick={handleClear}
+                    className="px-10 py-6 bg-panel-3 border border-border text-text-dim rounded-[2rem] font-black uppercase tracking-[0.2em] hover:text-white transition-all"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

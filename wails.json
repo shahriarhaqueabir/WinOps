@@ -1,0 +1,23 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "UniversalOps",
+  "outputfilename": "UniversalOps",
+  "frontend:dir": "cmd/opsforall-gui/frontend",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "http://127.0.0.1:5173",
+  "info": {
+    "productName": "UniversalOps Operations Platform",
+    "productVersion": "1.6.4",
+    "copyright": "Copyright 2026 UniversalOps",
+    "comments": "High-Performance Technical Operations Intelligence"
+  },
+  "nsis": {
+    "custom": ""
+  },
+  "author": {
+    "name": "UniversalOps",
+    "email": "noreply@universalops.invalid"
+  }
+}

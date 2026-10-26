@@ -1,0 +1,159 @@
+import { useState, useEffect, Suspense, lazy } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Network, LayoutDashboard, Activity, Globe, Cable, Wifi, Map, Search,
+  Signal, Radio, Radar, Stethoscope, ShieldCheck,
+  Compass, Zap, Globe2,
+} from 'lucide-react'
+import { useBackend } from '@/hooks/useBackend'
+import { useSettingsStore, useNavigationStore } from '@/stores'
+import { DataFreshnessIndicator } from '@/components/ui/DataFreshnessIndicator'
+import { CategoryGroup } from '@/components/ui/CategoryGroup'
+
+// Tab imports (lazy-loaded to reduce initial bundle)
+const OverviewTab = lazy(() => import('./netops/OverviewTab').then(m => ({ default: m.OverviewTab })))
+const PingTab = lazy(() => import('./netops/PingTab').then(m => ({ default: m.PingTab })))
+const DnsTab = lazy(() => import('./netops/DnsTab').then(m => ({ default: m.DnsTab })))
+const ConnectionsTab = lazy(() => import('./netops/ConnectionsTab').then(m => ({ default: m.ConnectionsTab })))
+const InterfacesTab = lazy(() => import('./netops/InterfacesTab').then(m => ({ default: m.InterfacesTab })))
+const TracerouteTab = lazy(() => import('./netops/TracerouteTab').then(m => ({ default: m.TracerouteTab })))
+const PortScanTab = lazy(() => import('./netops/PortScanTab').then(m => ({ default: m.PortScanTab })))
+const BandwidthTab = lazy(() => import('./netops/BandwidthTab').then(m => ({ default: m.BandwidthTab })))
+const ArpTab = lazy(() => import('./netops/ArpTab').then(m => ({ default: m.ArpTab })))
+const DnsAdvancedTab = lazy(() => import('./netops/DnsAdvancedTab').then(m => ({ default: m.DnsAdvancedTab })))
+const MultiPingTab = lazy(() => import('./netops/MultiPingTab').then(m => ({ default: m.MultiPingTab })))
+const HealthCheckTab = lazy(() => import('./netops/HealthCheckTab').then(m => ({ default: m.HealthCheckTab })))
+const VpnTab = lazy(() => import('./netops/VpnTab').then(m => ({ default: m.VpnTab })))
+const DiscoveryTab = lazy(() => import('./netops/DiscoveryTab').then(m => ({ default: m.DiscoveryTab })))
+const ActionsTab = lazy(() => import('./netops/ActionsTab').then(m => ({ default: m.ActionsTab })))
+
+type NetOpsCategory =
+  | 'overview' | 'connections' | 'interfaces' | 'arp'
+  | 'ping' | 'dns' | 'traceroute' | 'portscan' | 'bandwidth'
+  | 'dns-advanced' | 'multi-ping' | 'health' | 'vpn'
+  | 'discovery' | 'actions'
+
+interface CategoryDef {
+  id: NetOpsCategory
+  label: string
+  icon: React.ReactNode
+  group: 'inspection' | 'diagnosis' | 'action'
+}
+
+const categories: CategoryDef[] = [
+  { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={18} />, group: 'inspection' },
+  { id: 'connections', label: 'Connections', icon: <Cable size={18} />, group: 'inspection' },
+  { id: 'interfaces', label: 'Interfaces', icon: <Wifi size={18} />, group: 'inspection' },
+  { id: 'arp', label: 'ARP Table', icon: <Radio size={18} />, group: 'inspection' },
+  { id: 'ping', label: 'Ping', icon: <Activity size={18} />, group: 'diagnosis' },
+  { id: 'dns', label: 'DNS', icon: <Globe size={18} />, group: 'diagnosis' },
+  { id: 'traceroute', label: 'Traceroute', icon: <Map size={18} />, group: 'diagnosis' },
+  { id: 'portscan', label: 'Port Scan', icon: <Search size={18} />, group: 'diagnosis' },
+  { id: 'bandwidth', label: 'Bandwidth', icon: <Signal size={18} />, group: 'diagnosis' },
+  { id: 'dns-advanced', label: 'DNS Advanced', icon: <Globe2 size={18} />, group: 'diagnosis' },
+  { id: 'multi-ping', label: 'Multi-Ping', icon: <Radar size={18} />, group: 'diagnosis' },
+  { id: 'health', label: 'Health Check', icon: <Stethoscope size={18} />, group: 'diagnosis' },
+  { id: 'vpn', label: 'VPN', icon: <ShieldCheck size={18} />, group: 'diagnosis' },
+  { id: 'discovery', label: 'Discovery', icon: <Compass size={18} />, group: 'action' },
+  { id: 'actions', label: 'Actions', icon: <Zap size={18} />, group: 'action' },
+]
+
+export function NetOps() {
+  const { call } = useBackend()
+  const { refreshInterval } = useSettingsStore()
+  const { targetTab, clearTargetTab } = useNavigationStore()
+  const [activeCategory, setActiveCategory] = useState<NetOpsCategory>('overview')
+
+  // Deep Link sync
+  useEffect(() => {
+    if (targetTab) {
+      const found = categories.find(c => c.id === targetTab)
+      if (found) {
+        setActiveCategory(found.id)
+        clearTargetTab()
+      }
+    }
+  }, [targetTab, clearTargetTab])
+
+  const { dataUpdatedAt: ifacesUpdatedAt } = useQuery({
+    queryKey: ['netops-interfaces-sidebar'],
+    queryFn: async () => {
+      const res = await call('NetOps.GetInterfaces')
+      return res
+    },
+    refetchInterval: refreshInterval,
+  })
+
+  const renderContent = () => {
+    switch (activeCategory) {
+      case 'overview': return <OverviewTab />
+      case 'connections': return <ConnectionsTab />
+      case 'interfaces': return <InterfacesTab />
+      case 'arp': return <ArpTab />
+      case 'ping': return <PingTab />
+      case 'dns': return <DnsTab />
+      case 'traceroute': return <TracerouteTab />
+      case 'portscan': return <PortScanTab />
+      case 'bandwidth': return <BandwidthTab />
+      case 'dns-advanced': return <DnsAdvancedTab />
+      case 'multi-ping': return <MultiPingTab />
+      case 'health': return <HealthCheckTab />
+      case 'vpn': return <VpnTab />
+      case 'discovery': return <DiscoveryTab />
+      case 'actions': return <ActionsTab />
+      default: return <OverviewTab />
+    }
+  }
+
+  const inspectionCategories = categories.filter(c => c.group === 'inspection')
+  const diagnosisCategories = categories.filter(c => c.group === 'diagnosis')
+  const actionCategories = categories.filter(c => c.group === 'action')
+
+  return (
+    <div className="flex flex-col h-full bg-[var(--color-bg)] animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="py-8 border-b border-[var(--color-border)] bg-[var(--color-panel-2)]/50 flex items-center justify-between px-10">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent border border-accent/20">
+               <Network size={18} />
+            </div>
+            <h1 className="text-sm font-black text-[var(--color-text)] uppercase tracking-[0.25em]">Traffic & Connectivity</h1>
+          </div>
+          <p className="text-3xl font-bold text-[var(--color-text)] tracking-tight">Network Operations</p>
+          <p className="text-[var(--color-text-dim)] text-xs font-semibold uppercase tracking-widest mt-2">Inspection, diagnosis, and action for network engineering workflows.</p>
+          <DataFreshnessIndicator lastUpdated={ifacesUpdatedAt ? new Date(ifacesUpdatedAt) : null} className="mt-4" />
+        </div>
+        <button
+          onClick={() => useNavigationStore.getState().navigate('network-designer')}
+          className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl bg-accent text-white hover:bg-accent/90 shadow-lg transition-all mr-10"
+        >
+          <Map size={16} />
+          Network Designer
+        </button>
+      </div>
+
+      {/* Content: Sidebar + Main */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-64 border-r border-[var(--color-border)] bg-[var(--color-panel)] overflow-y-auto p-4 scroll-smooth">
+          <CategoryGroup label="INSPECTION" group="inspection" page="netops" categories={inspectionCategories} active={activeCategory} onSelect={setActiveCategory} />
+          <CategoryGroup label="DIAGNOSIS" group="diagnosis" page="netops" categories={diagnosisCategories} active={activeCategory} onSelect={setActiveCategory} />
+          <CategoryGroup label="ACTION" group="action" page="netops" categories={actionCategories} active={activeCategory} onSelect={setActiveCategory} />
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto p-10 relative">
+          <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10">
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-accent rounded-full blur-[120px]" />
+          </div>
+          <Suspense fallback={<div className="flex items-center justify-center h-full text-text-faint text-xs font-black uppercase tracking-widest animate-pulse">Synchronizing Topology...</div>}>
+            {renderContent()}
+          </Suspense>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
