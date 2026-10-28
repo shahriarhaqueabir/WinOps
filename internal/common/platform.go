@@ -25,33 +25,18 @@ func IsWindows() bool {
 	return runtime.GOOS == "windows"
 }
 
-// IsLinux returns true if running on Linux.
-func IsLinux() bool {
-	return runtime.GOOS == "linux"
-}
-
-// IsMacOS returns true if running on macOS.
-func IsMacOS() bool {
-	return runtime.GOOS == "darwin"
-}
-
 // IsAdminRequired returns true if the current operation typically needs
-// elevated privileges on the current OS.
+// elevated privileges on Windows.
 func IsAdminRequired() bool {
-	// Most system operations on Windows and Linux need elevated privileges
-	return IsWindows() || IsLinux()
+	return true
 }
 
-// IsAdmin returns true if the process has administrative/root privileges.
+// IsAdmin returns true if the process has administrative privileges.
 func IsAdmin() bool {
-	if runtime.GOOS == "windows" {
-		// Windows check via shell command as fallback if syscalls aren't easily bundled
-		cmd := HiddenCommand("net", "session")
-		err := cmd.Run()
-		return err == nil
-	}
-	// Unix/Linux/Darwin
-	return os.Geteuid() == 0
+	// Windows check via shell command
+	cmd := HiddenCommand("net", "session")
+	err := cmd.Run()
+	return err == nil
 }
 
 // GetBaseDir returns the application base directory. It prefers a local 'data'

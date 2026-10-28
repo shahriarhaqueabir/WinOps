@@ -73,13 +73,7 @@ func GetSubnetTraffic() []SubnetTraffic {
 
 // GetConnections returns network connection information.
 func GetConnections() ([]ConnectionInfo, error) {
-	if common.IsWindows() {
-		return getConnectionsWindows()
-	}
-	if common.IsLinux() {
-		return getConnectionsLinux()
-	}
-	return nil, fmt.Errorf("connections not supported on this platform")
+	return getConnectionsWindows()
 }
 
 // getConnectionsWindows runs netstat -ano and parses the output.
@@ -104,33 +98,6 @@ func getConnectionsWindows() ([]ConnectionInfo, error) {
 
 	return connections, nil
 }
-
-// getConnectionsLinux parses /proc/net/tcp and /proc/net/udp.
-func getConnectionsLinux() ([]ConnectionInfo, error) {
-	var connections []ConnectionInfo
-
-	tcpConns, err := parseProcNet("/proc/net/tcp", "TCP")
-	if err == nil {
-		connections = append(connections, tcpConns...)
-	}
-
-	tcp6Conns, err := parseProcNet("/proc/net/tcp6", "TCP")
-	if err == nil {
-		connections = append(connections, tcp6Conns...)
-	}
-
-	udpConns, err := parseProcNet("/proc/net/udp", "UDP")
-	if err == nil {
-		connections = append(connections, udpConns...)
-	}
-
-	if len(connections) == 0 {
-		return nil, fmt.Errorf("no connections found in /proc/net")
-	}
-
-	return connections, nil
-}
-
 // parseProcNet parses /proc/net/tcp or /proc/net/udp format.
 // Format:
 //

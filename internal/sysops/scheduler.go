@@ -2,8 +2,6 @@ package sysops
 
 import (
 	"fmt"
-	"os/exec"
-	"runtime"
 	"strings"
 
 	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
@@ -18,44 +16,9 @@ type ScheduledTaskInfo struct {
 	NextRun  string `json:"next_run"`
 }
 
-// GetScheduledTasks returns all scheduled tasks (cron on Linux, schtasks on Windows).
+// GetScheduledTasks returns all scheduled tasks (schtasks on Windows).
 func GetScheduledTasks() ([]ScheduledTaskInfo, error) {
-	switch runtime.GOOS {
-	case "linux":
-		return getCronTasks()
-	case "windows":
-		return getSchtasks()
-	default:
-		return nil, nil
-	}
-}
-
-func getCronTasks() ([]ScheduledTaskInfo, error) {
-	cmd := exec.Command("crontab", "-l")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-
-	var tasks []ScheduledTaskInfo
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		parts := strings.Fields(line)
-		if len(parts) >= 6 {
-			schedule := strings.Join(parts[:5], " ")
-			tasks = append(tasks, ScheduledTaskInfo{
-				Name:     parts[5],
-				Schedule: schedule,
-				Command:  strings.Join(parts[5:], " "),
-				Enabled:  true,
-			})
-		}
-	}
-	return tasks, nil
+	return getSchtasks()
 }
 
 func getSchtasks() ([]ScheduledTaskInfo, error) {
@@ -92,11 +55,8 @@ func getSchtasks() ([]ScheduledTaskInfo, error) {
 	return tasks, nil
 }
 
-// RunScheduledTask executes a scheduled task by name (Windows only).
+// RunScheduledTask executes a scheduled task by name.
 func RunScheduledTask(name string) error {
-	if runtime.GOOS != "windows" {
-		return fmt.Errorf("RunScheduledTask is only supported on Windows")
-	}
 	cmd := common.HiddenCommand("schtasks", "/run", "/tn", name)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

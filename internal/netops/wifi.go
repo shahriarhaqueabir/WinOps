@@ -3,8 +3,6 @@ package netops
 import (
 	"bufio"
 	"fmt"
-	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -30,11 +28,8 @@ type WiFiInfo struct {
 	Channel   int    `json:"channel"`
 }
 
-// ScanWiFiNetworks scans for visible WiFi networks using netsh (Windows) or iwlist (Linux).
+// ScanWiFiNetworks scans for visible WiFi networks using netsh (Windows).
 func ScanWiFiNetworks() ([]WiFiNetwork, error) {
-	if runtime.GOOS != "windows" {
-		return scanWiFiLinux()
-	}
 	return scanWiFiWindows()
 }
 
@@ -176,124 +171,8 @@ func isMACAddress(s string) bool {
 	return true
 }
 
-// scanWiFiLinux uses iwlist to scan for WiFi networks (basic support).
-func scanWiFiLinux() ([]WiFiNetwork, error) {
-	cmd := exec.Command("sudo", "iwlist", "scan")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("iwlist scan failed: %w", err)
-	}
-	return parseIwlistOutput(string(output))
-}
-
-func parseIwlistOutput(output string) ([]WiFiNetwork, error) {
-	var networks []WiFiNetwork
-	var current netopsWiFiBuilder
-
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if strings.HasPrefix(line, "Cell") && strings.Contains(line, "Address:") {
-			if current.SSID != "" {
-				networks = append(networks, current.build())
-			}
-			current = netopsWiFiBuilder{}
-			parts := strings.SplitN(line, "Address:", 2)
-			if len(parts) == 2 {
-				current.BSSID = strings.TrimSpace(parts[1])
-			}
-			continue
-		}
-
-		if strings.HasPrefix(line, "ESSID:") {
-			essid := strings.TrimPrefix(line, "ESSID:")
-			current.SSID = strings.Trim(strings.TrimSpace(essid), `"`)
-			continue
-		}
-
-		if strings.HasPrefix(line, "Quality=") {
-			// Quality=70/70  Signal level=-40 dBm
-			for _, part := range strings.Fields(line) {
-				if strings.HasPrefix(part, "Signal level=") {
-					sigStr := strings.TrimPrefix(part, "Signal level=")
-					if idx := strings.Index(sigStr, "/"); idx > 0 {
-						sigStr = sigStr[:idx]
-					}
-					if idx := strings.Index(sigStr, " "); idx > 0 {
-						sigStr = sigStr[:idx]
-					}
-					// Signal level is typically negative dBm, convert to 0-100 scale
-					sigVal, err := strconv.Atoi(sigStr)
-					if err == nil {
-						if sigVal < 0 {
-							current.Signal = min(100, max(0, sigVal+100))
-						} else {
-							current.Signal = sigVal
-						}
-					}
-				}
-			}
-			continue
-		}
-
-		if strings.HasPrefix(line, "Encryption key:") {
-			val := strings.TrimPrefix(line, "Encryption key:")
-			if strings.TrimSpace(val) == "on" {
-				current.Security = "WPA" // approximate
-			} else {
-				current.Security = "Open"
-			}
-			continue
-		}
-
-		if strings.HasPrefix(line, "IE: IEEE 802.11i/WPA2") || strings.HasPrefix(line, "IE: WPA2") {
-			if current.Security == "" || current.Security == "WPA" {
-				current.Security = "WPA2"
-			}
-			continue
-		}
-
-		if strings.HasPrefix(line, "Channel:") {
-			chStr := strings.TrimPrefix(line, "Channel:")
-			if ch, err := strconv.Atoi(strings.TrimSpace(chStr)); err == nil {
-				current.Channel = ch
-			}
-			continue
-		}
-	}
-
-	if current.SSID != "" {
-		networks = append(networks, current.build())
-	}
-
-	return networks, nil
-}
-
-type netopsWiFiBuilder struct {
-	SSID     string
-	Signal   int
-	Channel  int
-	Security string
-	BSSID    string
-}
-
-func (b netopsWiFiBuilder) build() WiFiNetwork {
-	return WiFiNetwork{
-		SSID:      b.SSID,
-		Signal:    b.Signal,
-		Channel:   b.Channel,
-		Security:  b.Security,
-		BSSID:     b.BSSID,
-		Frequency: "",
-	}
-}
-
 // GetWiFiInfo returns info about the current WiFi connection.
 func GetWiFiInfo() (WiFiInfo, error) {
-	if runtime.GOOS != "windows" {
-		return WiFiInfo{}, fmt.Errorf("wifi info not implemented on %s", runtime.GOOS)
-	}
 	return getWiFiInfoWindows()
 }
 

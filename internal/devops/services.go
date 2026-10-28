@@ -21,14 +21,7 @@ func ListServices(limit int) ([]ServiceEntry, error) {
 	var services []ServiceEntry
 	var err error
 
-	switch {
-	case common.IsWindows():
-		services, err = listWindowsServices()
-	case common.IsLinux():
-		services, err = listLinuxServices()
-	default:
-		return nil, fmt.Errorf("service status query not supported on this platform")
-	}
+	services, err = listWindowsServices()
 	if err != nil {
 		return nil, err
 	}
@@ -57,33 +50,24 @@ func ControlService(name, action string) error {
 		return fmt.Errorf("invalid service name: %q", name)
 	}
 
-	if common.IsWindows() {
-		var netAction string
-		switch action {
-		case "start":
-			netAction = "start"
-		case "stop":
-			netAction = "stop"
-		case "restart":
-			stopCmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "net", "stop", name)
-			if err := stopCmd.Run(); err != nil {
-				return fmt.Errorf("stop service %s: %w", name, err)
-			}
-			startCmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "net", "start", name)
-			return startCmd.Run()
-		default:
-			return fmt.Errorf("invalid service action: %s", action)
+	var netAction string
+	switch action {
+	case "start":
+		netAction = "start"
+	case "stop":
+		netAction = "stop"
+	case "restart":
+		stopCmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "net", "stop", name)
+		if err := stopCmd.Run(); err != nil {
+			return fmt.Errorf("stop service %s: %w", name, err)
 		}
-		cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "net", netAction, name)
-		return cmd.Run()
+		startCmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "net", "start", name)
+		return startCmd.Run()
+	default:
+		return fmt.Errorf("invalid service action: %s", action)
 	}
-
-	if common.IsLinux() {
-		cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "systemctl", action, name)
-		return cmd.Run()
-	}
-
-	return fmt.Errorf("service control not supported on this platform")
+	cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "net", netAction, name)
+	return cmd.Run()
 }
 
 func listWindowsServices() ([]ServiceEntry, error) {
@@ -142,15 +126,6 @@ func parseSCQuery(output string) []ServiceEntry {
 		}
 	}
 	return services
-}
-
-func listLinuxServices() ([]ServiceEntry, error) {
-	cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "systemctl", "list-units", "--type=service", "--all", "--no-legend", "--no-pager")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("query Linux services: %w", err)
-	}
-	return parseSystemctlServices(string(output)), nil
 }
 
 func parseWindowsServicesJSON(jsonStr string) ([]ServiceEntry, error) {
@@ -218,32 +193,4 @@ func serviceStatusFromNumber(status int) string {
 	default:
 		return fmt.Sprintf("Status(%d)", status)
 	}
-}
-
-func parseSystemctlServices(output string) []ServiceEntry {
-	var services []ServiceEntry
-	for _, line := range strings.Split(output, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
-			continue
-		}
-
-		name := fields[0]
-		status := fields[3]
-		description := ""
-		if len(fields) > 4 {
-			description = strings.Join(fields[4:], " ")
-		}
-		services = append(services, ServiceEntry{
-			Name:        name,
-			DisplayName: description,
-			Status:      status,
-			StartType:   fields[2],
-		})
-	}
-	return services
 }

@@ -23,43 +23,35 @@ type ScheduledTask struct {
 
 // GetScheduledTasks retrieves scheduled tasks.
 func GetScheduledTasks() ([]ScheduledTask, error) {
-	if common.IsWindows() {
-		// Use HiddenCommand for Windows system tools because Get-ScheduledTask
-		// requires access often restricted by sandboxing.
-		cmd := common.HiddenCommand("powershell", "-NoProfile", "-Command",
-			"Get-ScheduledTask | Select-Object TaskName,State,NextRunTime,LastRunTime,Author,Triggers | ConvertTo-Json -Compress -Depth 1")
-		output, err := cmd.Output()
-		if err == nil {
-			tasks, parseErr := parseTasksJSON(string(output))
-			if parseErr == nil && len(tasks) > 0 {
-				return tasks, nil
-			}
-		}
-
-		cmd2 := common.HiddenCommand("powershell", "-NoProfile", "-Command",
-			"Get-ScheduledTask | Select-Object TaskName,State,NextRunTime,LastRunTime | ConvertTo-Json -Compress")
-		output2, err2 := cmd2.Output()
-		if err2 == nil {
-			tasks, parseErr := parseTasksSimpleJSON(string(output2))
-			if parseErr == nil && len(tasks) > 0 {
-				return tasks, nil
-			}
-		}
-
-		// Fallback: try schtasks (available in all Windows environments, unlike PowerShell)
-		tasks, err := tasksSchTasksFallback()
-		if err == nil && len(tasks) > 0 {
+	// Use HiddenCommand for Windows system tools because Get-ScheduledTask
+	// requires access often restricted by sandboxing.
+	cmd := common.HiddenCommand("powershell", "-NoProfile", "-Command",
+		"Get-ScheduledTask | Select-Object TaskName,State,NextRunTime,LastRunTime,Author,Triggers | ConvertTo-Json -Compress -Depth 1")
+	output, err := cmd.Output()
+	if err == nil {
+		tasks, parseErr := parseTasksJSON(string(output))
+		if parseErr == nil && len(tasks) > 0 {
 			return tasks, nil
 		}
-
-		return nil, fmt.Errorf("failed to query Windows scheduled tasks: all approaches failed")
 	}
 
-	if common.IsLinux() {
-		return getTasksLinux()
+	cmd2 := common.HiddenCommand("powershell", "-NoProfile", "-Command",
+		"Get-ScheduledTask | Select-Object TaskName,State,NextRunTime,LastRunTime | ConvertTo-Json -Compress")
+	output2, err2 := cmd2.Output()
+	if err2 == nil {
+		tasks, parseErr := parseTasksSimpleJSON(string(output2))
+		if parseErr == nil && len(tasks) > 0 {
+			return tasks, nil
+		}
 	}
 
-	return nil, fmt.Errorf("scheduled task query not supported on this platform")
+	// Fallback: try schtasks (available in all Windows environments, unlike PowerShell)
+	tasks, err := tasksSchTasksFallback()
+	if err == nil && len(tasks) > 0 {
+		return tasks, nil
+	}
+
+	return nil, fmt.Errorf("failed to query Windows scheduled tasks: all approaches failed")
 }
 
 // ---------------------------------------------------------------------------
@@ -265,34 +257,6 @@ func findCSVColumn(headers []string, name string) int {
 // ---------------------------------------------------------------------------
 // Linux scheduled tasks via systemd timers and cron
 // ---------------------------------------------------------------------------
-
-// getTasksLinux retrieves scheduled tasks via systemd timers and cron.
-func getTasksLinux() ([]ScheduledTask, error) {
-	var tasks []ScheduledTask
-
-	// Try systemd timers first
-	cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "systemctl", "list-timers", "--all")
-	output, err := cmd.Output()
-	if err == nil {
-		tasks = parseSystemdTimers(string(output))
-		if len(tasks) > 0 {
-			return tasks, nil
-		}
-	}
-
-	// Fallback: parse /etc/crontab and /etc/cron.d/*
-	cronTasks := parseCronTab()
-	if len(cronTasks) > 0 {
-		tasks = append(tasks, cronTasks...)
-	}
-
-	if len(tasks) == 0 {
-		return nil, fmt.Errorf("no scheduled tasks found via systemd or cron")
-	}
-
-	return tasks, nil
-}
-
 // parseSystemdTimers parses the output of "systemctl list-timers --all".
 // Format:
 // NEXT                        LEFT     LAST                        PASSED  UNIT                        ACTIVATES

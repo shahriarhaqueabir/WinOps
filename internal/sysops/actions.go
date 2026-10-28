@@ -3,7 +3,6 @@ package sysops
 import (
 	"fmt"
 	"os/exec"
-	"runtime"
 	"strings"
 
 	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
@@ -125,65 +124,25 @@ func RunSystemAction(action SystemAction) (*ActionResult, error) {
 
 	switch action {
 	case ActionReboot:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("shutdown", "/r", "/t", "0")
-		} else {
-			cmd = exec.Command("sudo", "shutdown", "-r", "now")
-		}
+		cmd = common.HiddenCommand("shutdown", "/r", "/t", "0")
 	case ActionShutdown:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("shutdown", "/s", "/t", "0")
-		} else {
-			cmd = exec.Command("sudo", "shutdown", "-h", "now")
-		}
+		cmd = common.HiddenCommand("shutdown", "/s", "/t", "0")
 	case ActionSleep:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0")
-		} else {
-			cmd = exec.Command("systemctl", "suspend")
-		}
+		cmd = common.HiddenCommand("rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0")
 	case ActionHibernate:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("rundll32.exe", "powrprof.dll,SetSuspendState", "1,1,0")
-		} else {
-			cmd = exec.Command("systemctl", "hibernate")
-		}
+		cmd = common.HiddenCommand("rundll32.exe", "powrprof.dll,SetSuspendState", "1,1,0")
 	case ActionFlushDNS:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("ipconfig", "/flushdns")
-		} else {
-			cmd = exec.Command("sudo", "resolvectl", "flush-caches")
-		}
+		cmd = common.HiddenCommand("ipconfig", "/flushdns")
 	case ActionClearTemp:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("powershell", "-NoProfile", "-Command", "Remove-Item -Recurse -Force $env:TEMP\\* -ErrorAction SilentlyContinue")
-		} else {
-			cmd = exec.Command("sudo", "rm", "-rf", "/tmp/*")
-		}
+		cmd = common.HiddenCommand("powershell", "-NoProfile", "-Command", "Remove-Item -Recurse -Force $env:TEMP\\* -ErrorAction SilentlyContinue")
 	case ActionCleanPkgCache:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("powershell", "-Command", "winget source update")
-		} else {
-			cmd = exec.Command("sudo", "apt-get", "clean")
-		}
+		cmd = common.HiddenCommand("powershell", "-Command", "winget source update")
 	case ActionSystemUpdate:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("powershell", "-Command", "winget upgrade --all --accept-package-agreements --accept-source-agreements")
-		} else {
-			cmd = exec.Command("sh", "-c", "sudo apt-get update && sudo apt-get upgrade -y")
-		}
+		cmd = common.HiddenCommand("powershell", "-Command", "winget upgrade --all --accept-package-agreements --accept-source-agreements")
 	case ActionDiskCleanup:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("cleanmgr", "/sagerun:1")
-		} else {
-			cmd = exec.Command("sudo", "apt-get", "autoremove", "-y")
-		}
+		cmd = common.HiddenCommand("cleanmgr", "/sagerun:1")
 	case ActionDefrag:
-		if runtime.GOOS == "windows" {
-			cmd = common.HiddenCommand("defrag", "C:", "/O")
-		} else {
-			cmd = exec.Command("sudo", "fstrim", "-av")
-		}
+		cmd = common.HiddenCommand("defrag", "C:", "/O")
 	default:
 		return nil, fmt.Errorf("unknown action: %s", action)
 	}
@@ -210,13 +169,7 @@ func RestartService(name string) (*ActionResult, error) {
 		return nil, fmt.Errorf("invalid service name: %q", name)
 	}
 
-	var cmd *exec.Cmd
-
-	if runtime.GOOS == "windows" {
-		cmd = common.HiddenCommand("powershell", "-Command", fmt.Sprintf("Restart-Service -Name '%s' -Force", name)) // #nosec G204 -- name validated by ValidServiceName
-	} else {
-		cmd = exec.Command("sudo", "systemctl", "restart", name) // #nosec G204 -- name validated by ValidServiceName
-	}
+	cmd := common.HiddenCommand("powershell", "-Command", fmt.Sprintf("Restart-Service -Name '%s' -Force", name)) // #nosec G204 -- name validated by ValidServiceName
 
 	output, err := cmd.CombinedOutput()
 	result.Output = string(output)

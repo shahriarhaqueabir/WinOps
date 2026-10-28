@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -225,11 +224,7 @@ func RunCommand(cmd string) (*ShellResult, error) {
 	start := time.Now()
 
 	var c *common.SandboxedCmd
-	if runtime.GOOS == "windows" {
-		c = common.SandboxedCommand("cmd", "/c", cmd)
-	} else {
-		c = common.SandboxedCommand("sh", "-c", cmd)
-	}
+	c = common.SandboxedCommand("cmd", "/c", cmd)
 
 	output, err := c.CombinedOutput()
 	exitCode := 0
@@ -268,11 +263,7 @@ func RunCommandWithLiveOutput(cmd string, output chan string) (result *ShellResu
 	var stdoutBuf, stderrBuf strings.Builder
 
 	var c *common.SandboxedCmd
-	if runtime.GOOS == "windows" {
-		c = common.SandboxedCommand("cmd", "/c", cmd)
-	} else {
-		c = common.SandboxedCommand("sh", "-c", cmd)
-	}
+	c = common.SandboxedCommand("cmd", "/c", cmd)
 
 	stdout, pipeErr := c.StdoutPipe()
 	if pipeErr != nil {

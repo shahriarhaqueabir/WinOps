@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
 )
@@ -79,15 +78,6 @@ func GetFirewallProfiles() ([]FirewallProfile, error) {
 		}
 
 		return profiles, nil
-	}
-
-	// On Linux, return default profiles (iptables/nft doesn't have the same concept)
-	if common.IsLinux() {
-		return []FirewallProfile{
-			{Name: "Domain", Enabled: true},
-			{Name: "Private", Enabled: true},
-			{Name: "Public", Enabled: true},
-		}, nil
 	}
 
 	return nil, fmt.Errorf("firewall profile query not supported on this platform")
@@ -166,10 +156,6 @@ func GetFirewallRules() ([]FirewallRule, error) {
 		return nil, fmt.Errorf("no firewall rules parsed — check netsh output format (non-English locale?)")
 	}
 
-	if common.IsLinux() {
-		return getFirewallRulesLinux()
-	}
-
 	return nil, fmt.Errorf("firewall query not supported on this platform")
 }
 
@@ -179,97 +165,40 @@ func SetFirewallRuleState(name string, enable bool) error {
 		return fmt.Errorf("invalid firewall rule name: %q", name)
 	}
 
-	if common.IsWindows() {
-		// Use PowerShell Set-NetFirewallRule — avoids cmd/c string injection risk
-		enabledVal := "Disabled"
-		if enable {
-			enabledVal = "Enabled"
-		}
-		cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "powershell", "-NoProfile", "-Command",
-			fmt.Sprintf("Set-NetFirewallRule -Name '%s' -Enabled %s", name, enabledVal))
-		return cmd.Run()
+	// Use PowerShell Set-NetFirewallRule — avoids cmd/c string injection risk
+	enabledVal := "Disabled"
+	if enable {
+		enabledVal = "Enabled"
 	}
-
-	return fmt.Errorf("firewall state modification not supported on this platform")
+	cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "powershell", "-NoProfile", "-Command",
+		fmt.Sprintf("Set-NetFirewallRule -Name '%s' -Enabled %s", name, enabledVal))
+	return cmd.Run()
 }
 
 // IsolateHost enables or disables host-wide network isolation.
 func IsolateHost(isolate bool, autoExpireSeconds int) (*common.SecActionResult, error) {
-	if common.IsWindows() {
-		// Use netsh with direct args (no cmd/c string concat)
-		var policy string
-		if isolate {
-			policy = "blockinbound,blockoutbound"
-		} else {
-			policy = "blockinbound,allowoutbound"
-		}
-
-		cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "netsh", "advfirewall", "set", "allprofiles", "firewallpolicy", policy)
-		if err := cmd.Run(); err != nil {
-			return nil, err
-		}
-
-		msg := "Host network isolation DISABLED"
-		if isolate {
-			msg = "Host network isolation ENABLED"
-		}
-
-		return &common.SecActionResult{
-			Success: true,
-			Message: msg,
-		}, nil
+	// Use netsh with direct args (no cmd/c string concat)
+	var policy string
+	if isolate {
+		policy = "blockinbound,blockoutbound"
+	} else {
+		policy = "blockinbound,allowoutbound"
 	}
 
-	if common.IsLinux() {
-		if isolate {
-			// Self-exclusion: ensure the app's own connections survive isolation.
-			// Allow loopback and established connections so the GUI remains responsive.
-			common.HiddenCommand("iptables", "-I", "INPUT", "1", "-i", "lo", "-j", "ACCEPT").Run()
-			common.HiddenCommand("iptables", "-I", "OUTPUT", "1", "-o", "lo", "-j", "ACCEPT").Run()
-			common.HiddenCommand("iptables", "-I", "INPUT", "1", "-m", "state", "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT").Run()
-			common.HiddenCommand("iptables", "-I", "OUTPUT", "1", "-m", "state", "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT").Run()
-
-			// Only append DROP rule if not already present
-			if common.HiddenCommand("iptables", "-C", "INPUT", "-j", "DROP").Run() != nil {
-				_ = common.HiddenCommand("iptables", "-A", "INPUT", "-j", "DROP").Run()
-			}
-			if common.HiddenCommand("iptables", "-C", "OUTPUT", "-j", "DROP").Run() != nil {
-				_ = common.HiddenCommand("iptables", "-A", "OUTPUT", "-j", "DROP").Run()
-			}
-
-			// Auto-expire: schedule removal of isolation rules after the specified duration.
-			// This prevents permanent lockout if the user forgets to disable isolation.
-			if autoExpireSeconds > 0 {
-				go func() {
-					time.Sleep(time.Duration(autoExpireSeconds) * time.Second)
-					// Remove all DROP rules (reverse order)
-					for common.HiddenCommand("iptables", "-D", "INPUT", "-j", "DROP").Run() == nil {
-					}
-					for common.HiddenCommand("iptables", "-D", "OUTPUT", "-j", "DROP").Run() == nil {
-					}
-					common.LogInfo("Host isolation auto-expired after %d seconds", autoExpireSeconds)
-				}()
-			}
-		} else {
-			// Remove ALL matching DROP rules (loop until none left)
-			for common.HiddenCommand("iptables", "-D", "INPUT", "-j", "DROP").Run() == nil {
-			}
-			for common.HiddenCommand("iptables", "-D", "OUTPUT", "-j", "DROP").Run() == nil {
-			}
-			// Clean up self-exclusion rules added during isolation
-			for common.HiddenCommand("iptables", "-D", "INPUT", "-i", "lo", "-j", "ACCEPT").Run() == nil {
-			}
-			for common.HiddenCommand("iptables", "-D", "OUTPUT", "-o", "lo", "-j", "ACCEPT").Run() == nil {
-			}
-		}
-
-		return &common.SecActionResult{
-			Success: true,
-			Message: "Host isolation state changed via iptables",
-		}, nil
+	cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "netsh", "advfirewall", "set", "allprofiles", "firewallpolicy", policy)
+	if err := cmd.Run(); err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("host isolation not supported on this platform")
+	msg := "Host network isolation DISABLED"
+	if isolate {
+		msg = "Host network isolation ENABLED"
+	}
+
+	return &common.SecActionResult{
+		Success: true,
+		Message: msg,
+	}, nil
 }
 
 // getFirewallRulesPowerShell retrieves firewall rules via PowerShell Get-NetFirewallRule.

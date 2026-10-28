@@ -3,7 +3,6 @@ package sysops
 import (
 	"encoding/json"
 	"os/exec"
-	"runtime"
 	"strings"
 
 	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
@@ -32,25 +31,18 @@ var execCommand = exec.Command
 func GetInstalledPackages() []PackageManagerInfo {
 	var managers []PackageManagerInfo
 
-	switch runtime.GOOS {
-	case "linux":
-		managers = append(managers, getAptPackages())
-		managers = append(managers, getDnfPackages())
-		managers = append(managers, getPacmanPackages())
-	case "windows":
-		managers = append(managers, getWingetPackages())
-		managers = append(managers, getChocoPackages())
+	managers = append(managers, getWingetPackages())
+	managers = append(managers, getChocoPackages())
 
-		anyFound := false
-		for _, m := range managers {
-			if m.Found {
-				anyFound = true
-				break
-			}
+	anyFound := false
+	for _, m := range managers {
+		if m.Found {
+			anyFound = true
+			break
 		}
-		if !anyFound {
-			managers = append(managers, getWindowsInstalledApps())
-		}
+	}
+	if !anyFound {
+		managers = append(managers, getWindowsInstalledApps())
 	}
 
 	return managers
@@ -112,79 +104,6 @@ func parseWindowsInstalledApps(rawJSON string) PackageManagerInfo {
 	}
 
 	return result
-}
-
-// ── apt (dpkg) ───────────────────────────────────────────────────────────────
-
-func getAptPackages() PackageManagerInfo {
-	cmd := common.HiddenCommand("dpkg", "--get-selections")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return PackageManagerInfo{Name: "apt", Found: false}
-	}
-	return PackageManagerInfo{Name: "apt", Found: true, Packages: parseAptOutput(string(output))}
-}
-
-// parseAptOutput parses "dpkg --get-selections" output.
-func parseAptOutput(output string) []PackageInfo {
-	var pkgs []PackageInfo
-	for _, line := range strings.Split(output, "\n") {
-		parts := strings.Fields(line)
-		if len(parts) >= 2 && parts[1] == "install" {
-			pkgs = append(pkgs, PackageInfo{Name: parts[0]})
-		}
-	}
-	return pkgs
-}
-
-// ── dnf ──────────────────────────────────────────────────────────────────────
-
-func getDnfPackages() PackageManagerInfo {
-	cmd := common.HiddenCommand("dnf", "list", "installed", "-q")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return PackageManagerInfo{Name: "dnf", Found: false}
-	}
-	return PackageManagerInfo{Name: "dnf", Found: true, Packages: parseDnfOutput(string(output))}
-}
-
-// parseDnfOutput parses "dnf list installed -q" output (skips header line).
-func parseDnfOutput(output string) []PackageInfo {
-	var pkgs []PackageInfo
-	lines := strings.Split(output, "\n")
-	if len(lines) < 2 {
-		return pkgs
-	}
-	for _, line := range lines[1:] {
-		parts := strings.Fields(line)
-		if len(parts) >= 2 {
-			pkgs = append(pkgs, PackageInfo{Name: parts[0], Version: parts[1]})
-		}
-	}
-	return pkgs
-}
-
-// ── pacman ───────────────────────────────────────────────────────────────────
-
-func getPacmanPackages() PackageManagerInfo {
-	cmd := common.HiddenCommand("pacman", "-Q")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return PackageManagerInfo{Name: "pacman", Found: false}
-	}
-	return PackageManagerInfo{Name: "pacman", Found: true, Packages: parsePacmanOutput(string(output))}
-}
-
-// parsePacmanOutput parses "pacman -Q" output.
-func parsePacmanOutput(output string) []PackageInfo {
-	var pkgs []PackageInfo
-	for _, line := range strings.Split(output, "\n") {
-		parts := strings.Fields(line)
-		if len(parts) >= 2 {
-			pkgs = append(pkgs, PackageInfo{Name: parts[0], Version: parts[1]})
-		}
-	}
-	return pkgs
 }
 
 // ── winget ───────────────────────────────────────────────────────────────────

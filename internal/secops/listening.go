@@ -82,39 +82,21 @@ func serviceNameForPort(port int) string {
 
 // GetListeningPorts retrieves all ports in LISTENING state.
 func GetListeningPorts() ([]ListeningPort, error) {
-	if common.IsWindows() {
-		// Use HiddenCommand for Windows system tools because netstat
-		// requires access often restricted by sandboxing.
-		cmd := common.HiddenCommand("cmd", "/c", "netstat -ano")
-		output, err := cmd.Output()
-		if err == nil {
-			ports := parseListeningPorts(string(output))
-			if len(ports) > 0 {
-				ports = resolveProcessNames(ports)
-				return ports, nil
-			}
+	// Use HiddenCommand for Windows system tools because netstat
+	// requires access often restricted by sandboxing.
+	cmd := common.HiddenCommand("cmd", "/c", "netstat -ano")
+	output, err := cmd.Output()
+	if err == nil {
+		ports := parseListeningPorts(string(output))
+		if len(ports) > 0 {
+			ports = resolveProcessNames(ports)
+			return ports, nil
 		}
-		return nil, fmt.Errorf("failed to query listening ports on Windows: %w", err)
 	}
-
-	if common.IsLinux() {
-		return getListeningPortsLinux()
-	}
-
-	return nil, fmt.Errorf("listening port query not supported on this platform")
+	return nil, fmt.Errorf("failed to query listening ports on Windows: %w", err)
 }
 
 // getListeningPortsLinux uses ss -tulnp to list listening ports.
-func getListeningPortsLinux() ([]ListeningPort, error) {
-	cmd := common.SandboxedCommandWithConfig(common.SystemQuerySandbox(), "ss", "-tulnp")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("ss command failed: %w", err)
-	}
-
-	return parseSSOutput(string(output))
-}
-
 // parseSSOutput parses the output of "ss -tulnp".
 // Format: Netid State  Recv-Q Send-Q  Local Address:Port  Peer Address:Port  Process
 func parseSSOutput(output string) ([]ListeningPort, error) {

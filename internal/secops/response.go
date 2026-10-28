@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -30,15 +29,7 @@ func KillProcess(pid int) (*common.SecActionResult, error) {
 	defer cancel()
 	cfg := common.RemediationSandbox()
 
-	if runtime.GOOS == "windows" {
-		cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "taskkill", "/F", "/PID", fmt.Sprintf("%d", pid))
-		out, err := cmd.Output()
-		if err != nil {
-			return &common.SecActionResult{Success: false, Error: err.Error()}, nil
-		}
-		return &common.SecActionResult{Success: true, Message: strings.TrimSpace(string(out))}, nil
-	}
-	cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "kill", "-9", fmt.Sprintf("%d", pid))
+	cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "taskkill", "/F", "/PID", fmt.Sprintf("%d", pid))
 	out, err := cmd.Output()
 	if err != nil {
 		return &common.SecActionResult{Success: false, Error: err.Error()}, nil
@@ -55,15 +46,8 @@ func BlockIP(ip string) (*common.SecActionResult, error) {
 	defer cancel()
 	cfg := common.RemediationSandbox()
 
-	if runtime.GOOS == "windows" {
-		cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "netsh", "advfirewall", "firewall", "add", "rule",
-			"name=SECOPS_Block_"+ip, "dir=in", "action=block", "remoteip="+ip)
-		if err := cmd.Run(); err != nil {
-			return &common.SecActionResult{Success: false, Error: err.Error()}, nil
-		}
-		return &common.SecActionResult{Success: true, Message: fmt.Sprintf("Blocked IP %s", ip)}, nil
-	}
-	cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP")
+	cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "netsh", "advfirewall", "firewall", "add", "rule",
+		"name=SECOPS_Block_"+ip, "dir=in", "action=block", "remoteip="+ip)
 	if err := cmd.Run(); err != nil {
 		return &common.SecActionResult{Success: false, Error: err.Error()}, nil
 	}
@@ -79,18 +63,11 @@ func DisableAccount(username string) (*common.SecActionResult, error) {
 	defer cancel()
 	cfg := common.RemediationSandbox()
 
-	if runtime.GOOS == "windows" {
-		cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "net", "user", username, "/active:no")
-		if err := cmd.Run(); err != nil {
-			return &common.SecActionResult{Success: false, Error: err.Error()}, nil
-		}
-		return &common.SecActionResult{Success: true, Message: fmt.Sprintf("Account %s disabled", username)}, nil
-	}
-	cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "passwd", "-l", username)
+	cmd := common.SandboxedCommandWithConfigContext(ctx, cfg, "net", "user", username, "/active:no")
 	if err := cmd.Run(); err != nil {
 		return &common.SecActionResult{Success: false, Error: err.Error()}, nil
 	}
-	return &common.SecActionResult{Success: true, Message: fmt.Sprintf("Account %s locked", username)}, nil
+	return &common.SecActionResult{Success: true, Message: fmt.Sprintf("Account %s disabled", username)}, nil
 }
 
 // CaptureEvidence collects a structured forensic snapshot of the system.
@@ -103,12 +80,7 @@ func CaptureEvidence() (*common.SecActionResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// 1. Collect Data
-	// Process List (Enhanced: including Path for diff integrity)
 	procs, _ := common.HiddenCommandContext(ctx, "powershell", "-Command", "Get-Process | Select-Object Id,ProcessName,Path,CPU,WorkingSet | ConvertTo-Json").Output()
-	if runtime.GOOS != "windows" {
-		procs, _ = exec.CommandContext(ctx, "ps", "aux", "--json").Output()
-	}
 
 	// Connections (Enhanced: focus on external endpoints)
 	conns, _ := common.HiddenCommandContext(ctx, "powershell", "-Command", "Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess | ConvertTo-Json").Output()
@@ -120,7 +92,7 @@ func CaptureEvidence() (*common.SecActionResult, error) {
 		"processes":   string(procs),
 		"connections": string(conns),
 		"environment": env,
-		"platform":    runtime.GOOS,
+		"platform":    "windows",
 		"arch":        runtime.GOARCH,
 	}
 
@@ -133,7 +105,7 @@ func CaptureEvidence() (*common.SecActionResult, error) {
 		Type:      "full_snapshot",
 		Title:     "System Forensic Snapshot",
 		DataJSON:  string(dataJSON),
-		Metadata:  fmt.Sprintf("Captured via automated response. Platform: %s", runtime.GOOS),
+		Metadata:  "Captured via automated response. Platform: windows",
 	}
 
 	if err := s.InsertForensic(record); err != nil {

@@ -2,24 +2,18 @@ package netops
 
 import (
 	"fmt"
-	"os/exec"
 	"regexp"
-	"runtime"
 
 	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
 )
 
-// validInterfaceName matches typical OS-assigned interface names on
-// Windows/Linux/macOS (letters, digits, dashes, underscores, dots, spaces,
-// parentheses — e.g. "Ethernet", "eth0", "Wi-Fi", "en0", "Local Area
-// Connection* 1"). It intentionally excludes shell metacharacters and
-// backticks so a crafted "interface" value can never be used to inject
-// additional commands.
+// validInterfaceName matches typical Windows interface names (letters, digits,
+// dashes, underscores, dots, spaces, parentheses). It intentionally excludes
+// shell metacharacters.
 var validInterfaceName = regexp.MustCompile(`^[a-zA-Z0-9 ._()*-]{1,128}$`)
 
 // sanitizeInterfaceName rejects interface names containing shell
-// metacharacters or other unexpected content before they ever reach
-// exec.Command. See SEC-1 in the security audit.
+// metacharacters before they ever reach exec.Command.
 func sanitizeInterfaceName(iface string) (string, error) {
 	if iface == "" {
 		return "", nil
@@ -55,22 +49,11 @@ func RunNetworkAction(action string, params map[string]string) error {
 }
 
 func renewDHCP(iface string) error {
-	switch runtime.GOOS {
-	case "windows":
-		if iface == "" {
-			iface = "*"
-		}
-		_, err := common.HiddenCommand("ipconfig", "/renew", iface).CombinedOutput()
-		return err
-	case "linux":
-		if iface == "" {
-			return fmt.Errorf("interface name required")
-		}
-		_, err := exec.Command("sudo", "dhclient", "-r", iface).CombinedOutput() // #nosec G204 -- iface validated by sanitizeInterfaceName
-		return err
-	default:
-		return fmt.Errorf("unsupported platform")
+	if iface == "" {
+		iface = "*"
 	}
+	_, err := common.HiddenCommand("ipconfig", "/renew", iface).CombinedOutput()
+	return err
 }
 
 func resetInterface(iface string) error {
@@ -80,11 +63,7 @@ func resetInterface(iface string) error {
 	if err := setInterfaceState(iface, false); err != nil {
 		return err
 	}
-	cmd := common.HiddenCommand("sleep", "2")
-	if runtime.GOOS == "windows" {
-		cmd = common.HiddenCommand("timeout", "2", "cmd", "/c", "echo.")
-	}
-	cmd.Run()
+	common.HiddenCommand("timeout", "2", "cmd", "/c", "echo.").Run()
 	return setInterfaceState(iface, true)
 }
 
@@ -96,31 +75,11 @@ func setInterfaceState(iface string, enable bool) error {
 	if !enable {
 		state = "disable"
 	}
-	switch runtime.GOOS {
-	case "windows":
-		_, err := common.HiddenCommand("netsh", "interface", "set", "interface", "name="+iface, state).CombinedOutput()
-		return err
-	case "linux":
-		action := "up"
-		if !enable {
-			action = "down"
-		}
-		_, err := exec.Command("sudo", "ip", "link", "set", iface, action).CombinedOutput() // #nosec G204 -- iface validated by sanitizeInterfaceName
-		return err
-	default:
-		return fmt.Errorf("unsupported platform")
-	}
+	_, err := common.HiddenCommand("netsh", "interface", "set", "interface", "name="+iface, state).CombinedOutput()
+	return err
 }
 
 func clearARPCache() error {
-	switch runtime.GOOS {
-	case "windows":
-		_, err := common.HiddenCommand("netsh", "interface", "ipv4", "delete", "arpcache").CombinedOutput()
-		return err
-	case "linux":
-		_, err := exec.Command("sudo", "ip", "neigh", "flush", "all").CombinedOutput()
-		return err
-	default:
-		return fmt.Errorf("unsupported platform")
-	}
+	_, err := common.HiddenCommand("netsh", "interface", "ipv4", "delete", "arpcache").CombinedOutput()
+	return err
 }

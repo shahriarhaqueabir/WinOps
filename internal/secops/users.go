@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
@@ -41,100 +40,19 @@ type UserInfo struct {
 
 // GetUsers retrieves local user accounts.
 func GetUsers() ([]UserInfo, error) {
-	if common.IsWindows() {
-		// Use HiddenCommand for Windows system tools because 'net user'
-		// requires access often restricted by sandboxing.
-		cmd := common.HiddenCommand("cmd", "/c", "net user")
-		output, err := cmd.Output()
-		if err == nil {
-			usernames := parseNetUserList(string(output))
-			if len(usernames) > 0 {
-				return collectUserDetails(usernames)
-			}
-			return nil, fmt.Errorf("no users found — check 'net user' output format (non-English locale?)")
+	// Use HiddenCommand for Windows system tools because 'net user'
+	// requires access often restricted by sandboxing.
+	cmd := common.HiddenCommand("cmd", "/c", "net user")
+	output, err := cmd.Output()
+	if err == nil {
+		usernames := parseNetUserList(string(output))
+		if len(usernames) > 0 {
+			return collectUserDetails(usernames)
 		}
-		return nil, fmt.Errorf("failed to query Windows users: %w", err)
+		return nil, fmt.Errorf("no users found — check 'net user' output format (non-English locale?)")
 	}
-
-	if common.IsLinux() {
-		return getUsersLinux()
-	}
-
-	return nil, fmt.Errorf("user query not supported on this platform")
+	return nil, fmt.Errorf("failed to query Windows users: %w", err)
 }
-
-// getUsersLinux parses /etc/passwd for local user accounts.
-func getUsersLinux() ([]UserInfo, error) {
-	file, err := os.Open("/etc/passwd")
-	if err != nil {
-		return nil, fmt.Errorf("cannot open /etc/passwd: %w", err)
-	}
-	defer file.Close()
-
-	// Read /etc/group for group names
-	groupMap, err := parseGroupFile()
-	if err != nil {
-		groupMap = make(map[string]string) // non-fatal
-	}
-
-	// Read /etc/gshadow or /etc/shadow for account status
-	disabledUsers := getDisabledUsers()
-
-	var users []UserInfo
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		parts := strings.Split(line, ":")
-		if len(parts) < 7 {
-			continue
-		}
-
-		username := parts[0]
-		fullName := strings.Trim(parts[4], ",")
-		uidStr := parts[2]
-		gidStr := parts[3]
-		// shell := parts[6] // not used currently
-
-		uid, err := strconv.Atoi(uidStr)
-		if err != nil || uid < 1000 || uid == 65534 {
-			// Skip system users (uid < 1000) and nobody (65534)
-			continue
-		}
-
-		// Determine group
-		gid, _ := strconv.Atoi(gidStr)
-		groupName := groupMap[gidStr]
-		if groupName == "" {
-			groupName = fmt.Sprintf("gid:%d", gid)
-		}
-
-		isAdmin := groupName == "root" || groupName == "sudo" || groupName == "wheel" || gid == 0
-		isEnabled := !disabledUsers[username]
-
-		// SID equivalent: uid number
-		sid := fmt.Sprintf("uid:%d", uid)
-
-		users = append(users, UserInfo{
-			Username:  username,
-			FullName:  fullName,
-			SID:       sid,
-			Group:     groupName,
-			IsAdmin:   isAdmin,
-			IsEnabled: isEnabled,
-		})
-	}
-
-	if len(users) == 0 {
-		return nil, fmt.Errorf("no regular users found in /etc/passwd")
-	}
-
-	return users, nil
-}
-
 // parseGroupFile reads /etc/group and returns a map of GID -> group name.
 func parseGroupFile() (map[string]string, error) {
 	file, err := os.Open("/etc/group")
@@ -192,55 +110,18 @@ func getDisabledUsers() map[string]bool {
 
 // GetGroups retrieves local security groups.
 func GetGroups() ([]string, error) {
-	if common.IsWindows() {
-		// Use HiddenCommand.
+	// Use HiddenCommand.
 	cmd := common.HiddenCommand("cmd", "/c", "net localgroup")
-		output, err := cmd.Output()
-		if err == nil {
-			groups := parseNetLocalGroup(string(output))
-			if len(groups) > 0 {
-				return groups, nil
-			}
-			return nil, fmt.Errorf("no groups found — check 'net localgroup' output format (non-English locale?)")
+	output, err := cmd.Output()
+	if err == nil {
+		groups := parseNetLocalGroup(string(output))
+		if len(groups) > 0 {
+			return groups, nil
 		}
-		return nil, fmt.Errorf("failed to query Windows groups: %w", err)
+		return nil, fmt.Errorf("no groups found — check 'net localgroup' output format (non-English locale?)")
 	}
-
-	if common.IsLinux() {
-		return getGroupsLinux()
-	}
-
-	return nil, fmt.Errorf("group query not supported on this platform")
+	return nil, fmt.Errorf("failed to query Windows groups: %w", err)
 }
-
-// getGroupsLinux parses /etc/group for security groups.
-func getGroupsLinux() ([]string, error) {
-	file, err := os.Open("/etc/group")
-	if err != nil {
-		return nil, fmt.Errorf("cannot open /etc/group: %w", err)
-	}
-	defer file.Close()
-
-	var groups []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		parts := strings.Split(line, ":")
-		if len(parts) >= 1 && parts[0] != "" {
-			groups = append(groups, parts[0])
-		}
-	}
-
-	if len(groups) == 0 {
-		return nil, fmt.Errorf("no groups found in /etc/group")
-	}
-
-	return groups, nil
-}
-
 // parseNetUserList parses the listing output of "net user".
 func parseNetUserList(output string) []string {
 	var users []string

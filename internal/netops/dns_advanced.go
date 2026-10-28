@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 
@@ -25,19 +23,8 @@ type DoHResult struct {
 
 // FlushDNSCache flushes the system DNS resolver cache.
 func FlushDNSCache() error {
-	switch runtime.GOOS {
-	case "windows":
-		_, err := common.HiddenCommand("ipconfig", "/flushdns").CombinedOutput()
-		return err
-	case "linux":
-		_, err := exec.Command("sudo", "resolvectl", "flush-caches").CombinedOutput()
-		if err != nil {
-			_, err = exec.Command("sudo", "systemd-resolve", "--flush-caches").CombinedOutput()
-		}
-		return err
-	default:
-		return fmt.Errorf("unsupported platform")
-	}
+	_, err := common.HiddenCommand("ipconfig", "/flushdns").CombinedOutput()
+	return err
 }
 
 // ReverseLookup performs a PTR lookup for an IP address.
