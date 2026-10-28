@@ -24,6 +24,12 @@ interface PerformanceDiagnosticData {
   ai_first_token: { last_ms: number; average_ms: number; samples: number }
 }
 
+interface AppResourceUsage {
+  cpu_percent: number
+  memory_mb: number
+  goroutines: number
+}
+
 function metricFreshness(evidence?: LiveMetricEvidence) {
   if (!evidence?.available) return 'No sample'
   return `${evidence.age_ms ?? '—'} ms · ${evidence.fresh ? 'fresh' : 'stale'}${evidence.collector_error ? ` · ${evidence.collector_error}` : ''}`
@@ -40,6 +46,14 @@ export function PerformanceDiagnostics({ compact = false }: { compact?: boolean 
     queryFn: async () => await call('App.GetPerformanceDiagnostics') as PerformanceDiagnosticData,
     staleTime: 30000,
     refetchInterval: 30000,
+    refetchOnWindowFocus: false,
+  })
+
+  const { data: appUsage } = useQuery<AppResourceUsage>({
+    queryKey: ['app-resource-usage'],
+    queryFn: async () => await call('App.GetAppResourceUsage') as AppResourceUsage,
+    staleTime: 10000,
+    refetchInterval: 10000,
     refetchOnWindowFocus: false,
   })
 
@@ -64,6 +78,7 @@ export function PerformanceDiagnostics({ compact = false }: { compact?: boolean 
         <span><Timer size={11} className="mr-1 inline" />Collector max {maxCollectorMs} ms</span>
         <span><Database size={11} className="mr-1 inline" />DB drops {dropped}</span>
         <span>AI first token {data?.ai_first_token?.last_ms ? `${data.ai_first_token.last_ms.toFixed(0)} ms` : '—'}</span>
+        <span>App CPU {appUsage?.cpu_percent?.toFixed(1) ?? '—'}% · RAM {(appUsage?.memory_mb ?? 0).toFixed(0)} MB</span>
       </div>
     )
   }
@@ -76,6 +91,7 @@ export function PerformanceDiagnostics({ compact = false }: { compact?: boolean 
         <Metric label="Dashboard render" value={`${renderStats.lastMs.toFixed(1)} ms`} detail={`avg ${renderStats.averageMs.toFixed(1)} · max ${renderStats.maxMs.toFixed(1)} ms · n=${renderStats.samples}`} />
         <Metric label="Collector duration" value={`${maxCollectorMs} ms`} detail={`${collectorErrors} collection errors`} />
         <Metric label="DB queue drops" value={dropped.toString()} detail={`${data?.metric_queue?.queue_depth ?? 0}/${data?.metric_queue?.queue_capacity ?? 0} queued`} />
+        <Metric label="App CPU / RAM" value={`${(appUsage?.cpu_percent ?? 0).toFixed(1)}% / ${(appUsage?.memory_mb ?? 0).toFixed(0)} MB`} detail={`${appUsage?.goroutines ?? 0} goroutines`} />
         <Metric label="AI first token" value={data?.ai_first_token?.samples ? `${data.ai_first_token.last_ms.toFixed(0)} ms` : '—'} detail={data?.ai_first_token?.samples ? `avg ${data.ai_first_token.average_ms.toFixed(0)} ms · n=${data.ai_first_token.samples}` : 'No streamed sample yet'} />
       </div>
       <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-text-faint lg:grid-cols-3">

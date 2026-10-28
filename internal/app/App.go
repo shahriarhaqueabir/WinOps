@@ -89,6 +89,9 @@ type App struct {
 
 	// ecoWorkerQuit signals the eco-mode worker goroutine to stop
 	ecoWorkerQuit chan struct{}
+
+	// perfMonitorQuit signals the performance monitor goroutine to stop
+	perfMonitorQuit chan struct{}
 }
 
 // PerformanceDiagnostics exposes local-only performance counters for the UI.
@@ -350,14 +353,12 @@ func (a *App) Startup(ctx context.Context) {
 	// Initialize Health facade now that the registry exists
 	a.Health = NewHealth(a.pipeline, a.alerts, a.collectorRegistry)
 
-	// Start the modular engine evaluation loop
-	a.engineLoop.Start(2 * time.Second)
-
-	// Start the modular engine evaluation loop
-	a.engineLoop.Start(2 * time.Second)
+	// Start the modular engine evaluation loop (5s default for lower footprint)
+	a.engineLoop.Start(5 * time.Second)
 
 	a.startProcessWorker()
 	a.startEcoWorker()
+	a.startPerfMonitor()
 }
 
 // Shutdown is called by Wails when the application shuts down.
@@ -385,6 +386,11 @@ func (a *App) Shutdown(ctx context.Context) {
 	// Signal the eco worker to stop
 	if a.ecoWorkerQuit != nil {
 		close(a.ecoWorkerQuit)
+	}
+
+	// Signal the perf monitor to stop
+	if a.perfMonitorQuit != nil {
+		close(a.perfMonitorQuit)
 	}
 
 	// Stop the managed llama-server (if any)
@@ -983,8 +989,14 @@ func (a *App) startProcessWorker() {
 	go func() {
 		defer common.RecoverPanic()
 
-		// Full process scan every 5 seconds
-		ticker := time.NewTicker(5 * time.Second)
+		// Full process scan interval (configurable via env, default 5s)
+		workerInterval := 5 * time.Second
+		if v := os.Getenv("UNIVERSALOPS_PROCESS_WORKER_INTERVAL"); v != "" {
+			if secs, err := time.ParseDuration(v + "s"); err == nil && secs > 0 {
+				workerInterval = secs
+			}
+		}
+		ticker := time.NewTicker(workerInterval)
 		defer ticker.Stop()
 
 		// Memory reporting ticker (60s)

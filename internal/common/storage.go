@@ -619,7 +619,13 @@ func (s *Storage) drainLogs(batch []LogWrite) []LogWrite {
 }
 
 func (s *Storage) metricsLoggerLoop() {
-	ticker := time.NewTicker(5 * time.Second) // AUDIT: Reduced from 30s to 5s for fast verification
+	interval := 5 * time.Second
+	if v := os.Getenv("UNIVERSALOPS_METRICS_LOGGER_INTERVAL"); v != "" {
+		if secs, err := time.ParseDuration(v + "s"); err == nil && secs > 0 {
+			interval = secs
+		}
+	}
+	ticker := time.NewTicker(interval) // AUDIT: Reduced from 30s to 5s for fast verification
 	defer ticker.Stop()
 	for {
 		select {

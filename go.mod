@@ -9,7 +9,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/prometheus/client_golang v1.24.1
 	github.com/shirou/gopsutil/v4 v4.26.6
-	github.com/wailsapp/wails/v2 v2.13.0
+	github.com/wailsapp/wails/v2 v2.17.0
 	github.com/yusufpapurcu/wmi v1.2.4
 	golang.org/x/net v0.60.0
 	golang.org/x/sync v0.23.0
@@ -25,6 +25,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.16 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/goccy/llamawasm2go v0.4.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -57,7 +58,6 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/wailsapp/go-webview2 v1.0.22 // indirect
-	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect

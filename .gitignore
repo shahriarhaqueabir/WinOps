@@ -110,8 +110,8 @@ scripts/build.sh
 scripts/release.sh
 scripts/release-gh.sh
 
-# AI model files (large binaries, runtime data)
-*.gguf
+# Bundled llama.cpp binaries (user-provided, not tracked)
+llama-b10952-bin-win-cuda-x64/
 *.bin
 data/*.modelfile
 data/models/
