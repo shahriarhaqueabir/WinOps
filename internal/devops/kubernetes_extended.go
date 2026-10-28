@@ -357,7 +357,7 @@ func K8sPortForward(podName string, namespace string, localPort string, podPort 
 	if err != nil {
 		return "", fmt.Errorf("kubectl binary not found")
 	}
-	cmd := exec.CommandContext(ctx, kubectlPath, args...)
+	cmd := exec.CommandContext(ctx, kubectlPath, args...) // #nosec G204 -- kubectl path resolved via LookPath; args are fixed/internal
 	output, _ := cmd.CombinedOutput()
 	return string(output), nil
 }

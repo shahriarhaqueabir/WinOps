@@ -616,7 +616,7 @@ func RunGitBashWithLiveOutput(cmd string, output chan string) (result *ShellResu
 
 	bashPath := findGitBash()
 	if bashPath == "" {
-		return nil, fmt.Errorf("Git Bash not found: check C:\\Program Files\\Git\\bin\\bash.exe")
+		return nil, fmt.Errorf("git bash not found: check C:\\Program Files\\Git\\bin\\bash.exe")
 	}
 
 	start := time.Now()
