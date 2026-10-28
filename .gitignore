@@ -110,6 +110,12 @@ scripts/build.sh
 scripts/release.sh
 scripts/release-gh.sh
 
+# AI model files (large binaries, runtime data)
+*.gguf
+*.bin
+data/*.modelfile
+data/models/
+
 # NOTE: scripts/package-scoop.ps1 and scripts/package-homebrew.ps1 are intentionally
 # NOT ignored — release.yml's publish job invokes package-scoop.ps1 in CI, so it must
 # exist in the checkout. package-homebrew.ps1 is kept tracked for manual macOS releases.
