@@ -552,6 +552,14 @@ func (ae *AlertEngine) PersistRules() {
 		LogWarn("AlertEngine: failed to begin rule persist tx: %v", err)
 		return
 	}
+	defer tx.Rollback()
+
+	// Sync: clear persisted rules then re-insert the full in-memory set,
+	// so removed rules do not linger in SQLite across restarts.
+	if _, err := tx.Exec(`DELETE FROM alert_rules`); err != nil {
+		LogWarn("AlertEngine: failed to clear persisted rules: %v", err)
+		return
+	}
 	for _, r := range rules {
 		if err := s.InsertAlertRule(AlertRuleRecord{
 			Metric:    r.Metric,
@@ -562,6 +570,7 @@ func (ae *AlertEngine) PersistRules() {
 			Message:   r.Message,
 		}, tx); err != nil {
 			LogWarn("AlertEngine: failed to persist rule %s: %v", r.Metric, err)
+			return
 		}
 	}
 	if err := tx.Commit(); err != nil {

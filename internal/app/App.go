@@ -300,6 +300,11 @@ func (a *App) Startup(ctx context.Context) {
 		}
 	}
 
+	// Restore persisted network topology (if any) into the in-memory engine.
+	if a.NetOps != nil {
+		a.NetOps.LoadTopology()
+	}
+
 	// Initialize the session logger locally
 	logPath := filepath.Join(logsDir, "universalops.log")
 	if err := common.InitLogger(logPath); err != nil {
