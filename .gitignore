@@ -112,6 +112,12 @@ scripts/release-gh.sh
 
 # Bundled llama.cpp binaries (user-provided, not tracked)
 llama-b10952-bin-win-cuda-x64/
+
+# AI model files (large binaries, runtime data)
+*.gguf
+*.bin
+data/*.modelfile
+data/models/
 *.bin
 data/*.modelfile
 data/models/
