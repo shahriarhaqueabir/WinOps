@@ -29,6 +29,7 @@ export interface OnboardingConfig {
   storagePath: string
   logsPath: string
   modelPath: string
+  customModelPath: string
   safetyPolicy: SafetyPolicy
   engineProfile: string
 }
@@ -67,6 +68,9 @@ export interface AISetupRecommendation {
   system_ram_gb: number
   system_cpu_threads: number
   timestamp: string
+  download_path?: string
+  model_path?: string
+  models_dir?: string
   fallback_models?: ModelOption[]
 }
 

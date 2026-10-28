@@ -45,8 +45,9 @@ const NAME_PATTERN = /^[a-zA-Z0-9\s_-]+$/
 const DEFAULT_CONFIG: OnboardingConfig = {
   companionName: 'Hawk',
   storagePath: 'data',
-  logsPath: 'logs',
-  modelPath: '',
+  logsPath: 'data',
+  modelPath: 'data/universalops.modelfile',
+  customModelPath: '',
   safetyPolicy: 'standard',
   engineProfile: 'standard',
 }
@@ -214,6 +215,17 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     }
   }
 
+  const pickCustomModel = async () => {
+    try {
+      const path = await call('App.OpenFileDialog', 'Select Existing Model', ['GGUF Models|*.gguf', 'Model Files|*.bin;*.model', 'All Files|*.*'])
+      if (typeof path === 'string' && path) {
+        setConfig((prev) => ({ ...prev, customModelPath: path }))
+      }
+    } catch {
+      toast.error('File selection failed')
+    }
+  }
+
   // ── Name validation ──
 
   const updateName = (value: string) => {
@@ -240,7 +252,8 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     setSetupRunning(true)
     useOllamaStore.getState().setProgress(null)
     try {
-      await call('AIOps.SetupOllamaPersona', rec.recommended_model)
+      const baseModel = config.customModelPath || rec.recommended_model
+      await call('AIOps.SetupOllamaPersona', baseModel)
       setStep('finished')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'AI setup failed'
@@ -288,7 +301,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       if (config.storagePath !== 'data') {
         await call('App.UpdateStorageConfig', config.storagePath)
       }
-      if (config.logsPath !== 'logs') {
+      if (config.logsPath !== 'data') {
         await call('App.UpdateLogsConfig', config.logsPath)
       }
       await call('App.MarkOnboarded')
@@ -804,8 +817,25 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     </div>
                   </div>
 
-                  {/* AI recommendation card */}
-                  {aiRecommendation ? (
+                   {/* Custom model selection */}
+                   <div className="p-5 rounded-xl bg-[var(--color-panel-2)] border border-[var(--color-border)] flex items-center justify-between gap-4">
+                     <div className="min-w-0">
+                       <p className="font-bold text-[var(--color-text)] text-[11px] uppercase tracking-wider">Existing Model</p>
+                       <p className="text-[10px] text-[var(--color-accent)] font-mono truncate mt-0.5">
+                         {config.customModelPath || 'Use recommended model download'}
+                       </p>
+                       <p className="text-[10px] text-[var(--color-text-faint)] mt-0.5 font-medium">Select a model already in a custom folder.</p>
+                     </div>
+                     <button
+                       onClick={pickCustomModel}
+                       className="px-5 py-3 min-h-[44px] rounded-lg bg-[var(--color-panel-2)] hover:bg-[var(--color-panel-3)] text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--color-text)] border border-[var(--color-border)] transition-all shrink-0"
+                     >
+                       Browse
+                     </button>
+                   </div>
+
+                   {/* AI recommendation card */}
+                   {aiRecommendation ? (
                     <div className="p-6 rounded-xl bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/20 space-y-4">
                       <div className="flex items-center gap-3">
                         <BrainCircuit size={20} className="text-[var(--color-accent)]" />
@@ -819,12 +849,12 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                           <span className="col-span-2">{aiRecommendation.system_ram_gb.toFixed(0)} GB</span>
                           <span className="text-[var(--color-text-faint)]">CPU:</span>
                           <span className="col-span-2">{aiRecommendation.system_cpu_threads} threads</span>
-                          <span className="text-[var(--color-text-faint)]">STATUS:</span>
-                          <span className="col-span-2">
-                            {aiRecommendation.pull_required
-                              ? <span className="text-[var(--color-warning)]">Download required</span>
-                              : <span className="text-[var(--color-success)]">Ready to use</span>}
-                          </span>
+                           <span className="text-[var(--color-text-faint)]">STATUS:</span>
+                           <span className="col-span-2">
+                             {aiRecommendation.pull_required
+                               ? <span className="text-[var(--color-warning)]">Selection required</span>
+                               : <span className="text-[var(--color-success)]">Ready to use</span>}
+                           </span>
                         </div>
                       </div>
                       {aiRecommendation.fallback_models && aiRecommendation.fallback_models.length > 0 && (
