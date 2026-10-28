@@ -3,6 +3,9 @@ package aiops
 import (
 	"context"
 	"os"
+	"strings"
+
+	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
 )
 
 // AIProvider abstracts a local LLM backend (Ollama or llama.cpp).
@@ -26,7 +29,8 @@ func NewProvider(kind ProviderKind, modelPath string) AIProvider {
 	case ProviderLlama:
 		return NewLlamaProvider(modelPath)
 	case ProviderOpenAI:
-		return NewOpenAIProvider("", "")
+		url := common.GetLlamaServerManager().URL()
+		return NewOpenAIProvider(url, "")
 	default:
 		return NewOllamaProvider()
 	}
@@ -34,10 +38,19 @@ func NewProvider(kind ProviderKind, modelPath string) AIProvider {
 
 // DefaultProviderKind returns the configured provider kind.
 func DefaultProviderKind() ProviderKind {
-	if v := os.Getenv("AI_PROVIDER"); v == "llama" {
-		return ProviderLlama
+	if v := os.Getenv("AI_PROVIDER"); v != "" {
+		v = strings.ToLower(v)
+		if v == "llama" {
+			return ProviderLlama
+		}
+		if v == "openai" || v == "llama-server" || v == "llama.cpp" || v == "server" {
+			return ProviderOpenAI
+		}
 	}
-	if v := os.Getenv("AI_PROVIDER"); v == "openai" || v == "llama-server" || v == "llama.cpp" {
+	// Auto-detect: if a GPU llama-server binary and a GGUF model are available,
+	// prefer the in-process-managed server for fast GPU inference with no
+	// separate app to launch.
+	if common.GetLlamaServerManager().IsAvailable() {
 		return ProviderOpenAI
 	}
 	return ProviderOllama

@@ -19,6 +19,7 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"github.com/shahriarhaqueabir/UniversalOps/internal/aiops"
 	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
 	sysopsPkg "github.com/shahriarhaqueabir/UniversalOps/internal/sysops"
 )
@@ -276,6 +277,18 @@ func (a *App) Startup(ctx context.Context) {
 	a.AIOps.ctx = ctx
 	a.DevOps.ctx = ctx
 
+	// If using the GPU llama-server backend, start it now (managed child process)
+	if aiops.DefaultProviderKind() == aiops.ProviderOpenAI {
+		mgr := common.GetLlamaServerManager()
+		mgr.Configure("", "", "8080")
+		if err := mgr.Start(); err != nil {
+			common.LogWarn("llama-server failed to start: %v", err)
+		} else {
+			// Re-point provider to the managed server URL
+			a.AIOps.SetModelsDir(a.AIOps.GetModelsDir())
+		}
+	}
+
 	// Initialize persistent storage locally
 	dbPath := filepath.Join(dataDir, "universalops.db")
 	if err := common.InitStorage(dbPath); err != nil {
@@ -373,6 +386,9 @@ func (a *App) Shutdown(ctx context.Context) {
 	if a.ecoWorkerQuit != nil {
 		close(a.ecoWorkerQuit)
 	}
+
+	// Stop the managed llama-server (if any)
+	common.GetLlamaServerManager().Stop()
 
 	// Close persistent storage
 	if s := common.GetStorage(); s != nil {
