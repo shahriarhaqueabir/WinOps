@@ -3,7 +3,6 @@ package sysops
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"sync"
 	"time"
@@ -193,27 +192,7 @@ func GetGPUStats() *GPUStats {
 		return nvidiaStats
 	}
 
-	// 2. Try LibreHardwareMonitor (Fallback for AMD/Intel or when SMI is missing)
-	type Sensor struct {
-		Value float64
-	}
-	var dst []Sensor
-
-	_ = common.WMIQueryNamespaceWithTimeout("SELECT Value FROM Sensor WHERE SensorType='Temperature' AND Name LIKE '%GPU%'", &dst, "root\\LibreHardwareMonitor", 2*time.Second)
-	if len(dst) > 0 && !math.IsNaN(dst[0].Value) && !math.IsInf(dst[0].Value, 0) {
-		stats.Temperature = dst[0].Value
-	}
-
-	_ = common.WMIQueryNamespaceWithTimeout("SELECT Value FROM Sensor WHERE SensorType='Load' AND Name LIKE '%GPU Core%'", &dst, "root\\LibreHardwareMonitor", 2*time.Second)
-	if len(dst) > 0 && !math.IsNaN(dst[0].Value) && !math.IsInf(dst[0].Value, 0) {
-		stats.Utilization = dst[0].Value
-	}
-
-	_ = common.WMIQueryNamespaceWithTimeout("SELECT Value FROM Sensor WHERE SensorType='Fan' AND Name LIKE '%GPU%'", &dst, "root\\LibreHardwareMonitor", 2*time.Second)
-	if len(dst) > 0 && !math.IsNaN(dst[0].Value) && !math.IsInf(dst[0].Value, 0) {
-		stats.FanSpeed = dst[0].Value
-	}
-
+	// NVIDIA-SMI unavailable: no LHM fallback anymore.
 	return stats
 }
 

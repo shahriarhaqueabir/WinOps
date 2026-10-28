@@ -1435,24 +1435,6 @@ export interface CapabilityInfo {
   path: string
 }
 
-// ── LHM (LibreHardwareMonitor) Types ──
-
-export interface LHMStatusResult {
-  available: boolean
-  running: boolean
-  needsAdmin: boolean
-  version: string
-  error?: string
-}
-
-export interface LHMAuthorization {
-  reason: string
-  capabilities: string[]
-  risks: string[]
-  binaryName: string
-  publisher: string
-}
-
 // ── AIOps Live Context Types ──
 
 export interface AIWorkflowEvent {

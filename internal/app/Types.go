@@ -316,26 +316,6 @@ type SystemLogsResultData struct {
 	Total   int              `json:"total"`
 }
 
-// ── LHM (LibreHardwareMonitor) Types ────────────────────────────────────────
-
-// LHMStatusResult is the frontend-visible status of the bundled LHM.
-type LHMStatusResult struct {
-	Available  bool   `json:"available"`
-	Running    bool   `json:"running"`
-	NeedsAdmin bool   `json:"needsAdmin"`
-	Version    string `json:"version"`
-	Error      string `json:"error,omitempty"`
-}
-
-// LHMAuthorization explains what admin elevation is required for.
-type LHMAuthorization struct {
-	Reason       string   `json:"reason"`
-	Capabilities []string `json:"capabilities"`
-	Risks        []string `json:"risks"`
-	BinaryName   string   `json:"binaryName"`
-	Publisher    string   `json:"publisher"`
-}
-
 // ScheduledTaskData holds a scheduled task for frontend (SysOps).
 type ScheduledTaskData struct {
 	Name     string `json:"name"`

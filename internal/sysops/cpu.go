@@ -77,8 +77,8 @@ func GetCPUExtended() (*CPUExtendedStats, error) {
 		result.CacheSizeKB = info[0].CacheSize
 	}
 
-	// PROBE: Query LibreHardwareMonitor for Temperature
-	result.Temperature = getTemperatureLibre()
+	// Query Windows native temperature sensor (MSAcpi)
+	result.Temperature = getTemperature()
 
 	// Per-CPU info
 	perCPU, _ := cpu.Percent(0, true)
@@ -93,18 +93,8 @@ func GetCPUExtended() (*CPUExtendedStats, error) {
 	return result, nil
 }
 
-func getTemperatureLibre() float64 {
-	type Sensor struct {
-		Value float64
-	}
-	var dst []Sensor
-	// 1. Try LibreHardwareMonitor
-	q := "SELECT Value FROM Sensor WHERE SensorType='Temperature' AND (Name LIKE '%Package%' OR Name LIKE '%Core%')"
-	if err := common.WMIQueryNamespaceWithTimeout(q, &dst, "root\\LibreHardwareMonitor", 2*time.Second); err == nil && len(dst) > 0 {
-		return dst[0].Value
-	}
-
-	// 2. Try MSAcpi_ThermalZoneTemperature (Windows Native, often requires Admin)
+func getTemperature() float64 {
+	// Try MSAcpi_ThermalZoneTemperature (Windows Native, often requires Admin)
 	type MSAcpi_ThermalZoneTemperature struct {
 		CurrentTemperature int32
 	}

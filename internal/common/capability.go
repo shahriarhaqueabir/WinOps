@@ -36,7 +36,6 @@ const (
 	CapWireshark     CapabilityID = "wireshark"
 	CapSSH           CapabilityID = "ssh"
 	CapNvidiaSmi     CapabilityID = "nvidia-smi"
-	CapLHM           CapabilityID = "lhm"
 )
 
 // CapabilityInfo provides status and path information for a detected capability.
@@ -139,7 +138,7 @@ func (r *CapabilityRegistry) Refresh() {
 		allIds := []CapabilityID{
 			CapNmap, CapDocker, CapDockerCompose, CapPodman,
 			CapKubernetes, CapKubectl, CapHelm, CapTerraform, CapOpenTofu,
-			CapPython, CapNode, CapWireshark, CapSSH, CapNvidiaSmi, CapLHM, CapGit,
+			CapPython, CapNode, CapWireshark, CapSSH, CapNvidiaSmi, CapGit,
 		}
 
 		// Append dynamically registered capabilities
@@ -218,22 +217,6 @@ func (r *CapabilityRegistry) refreshBatch(ids []CapabilityID) {
 			path, err = r.discoverWindows(id)
 		}
 
-		// 5. Specialized WMI check for LHM (with 5s timeout)
-		if id == CapLHM && runtime.GOOS == "windows" {
-			// LHM is detected via WMI namespace existence
-			// We use a simple powershell check to avoid adding a heavy dependency to common if not already present.
-			// However, since we want a fast check, we check for a known WMI namespace.
-			lhmCtx, lhmCancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer lhmCancel()
-			cmd := HiddenCommandContext(lhmCtx, "powershell", "-Command", "Get-CimInstance -Namespace root\\LibreHardwareMonitor -ClassName Sensor -ErrorAction SilentlyContinue | Select-Object -First 1")
-			if errCheck := cmd.Run(); errCheck == nil {
-				path = "WMI:root\\LibreHardwareMonitor"
-				err = nil
-			} else {
-				err = fmt.Errorf("LibreHardwareMonitor WMI namespace not found")
-			}
-		}
-
 		version := ""
 		if err == nil {
 			version = r.detectVersion(id, path)
@@ -274,9 +257,6 @@ func (r *CapabilityRegistry) detectVersion(id CapabilityID, path string) string 
 		// kubectl version contacts the API server; --client avoids needing a cluster
 		cmd = HiddenCommandContext(ctx, path, "version", "--client")
 		out, err = cmd.Output()
-
-	case CapLHM:
-		return "not applicable"
 
 	default:
 		arg := "--version"

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -532,24 +531,7 @@ func (s *SysOps) GetHardwareInfo() (out HardwareInfo) {
 
 	// Sensors — always initialize as empty slice to avoid nil JSON serialization
 	sensors := make([]SensorData, 0)
-	if common.IsWindows() {
-		// Attempt to get Fan speeds from Libre
-		type Sensor struct {
-			Name  string
-			Value float64
-			Unit  string
-		}
-		var dst []Sensor
-		_ = common.WMIQueryNamespaceWithTimeout("SELECT Name, Value FROM Sensor WHERE SensorType='Fan' OR SensorType='Temperature'", &dst, "root\\LibreHardwareMonitor", 2*time.Second)
-		for _, s := range dst {
-			sensors = append(sensors, SensorData{
-				Name:  s.Name,
-				Type:  "Sensor",
-				Value: s.Value,
-				Unit:  "RPM", // Fans are usually RPM, temp handled separately in UI but we can generalize
-			})
-		}
-	}
+	// (LibreHardwareMonitor removed; no extra sensor source available.)
 
 	return HardwareInfo{
 		CPU:       cpu,
@@ -588,97 +570,6 @@ func (s *SysOps) GetCPUExtended() (out CPUExtendedInfo) {
 		Temperature:  stats.Temperature,
 		PerCPUInfo:   perCPU,
 	}
-}
-
-// ── LHM (LibreHardwareMonitor) Management ───────────────────────────────────
-
-// GetLHMStatus returns the current state of the bundled LHM instance.
-func (s *SysOps) GetLHMStatus() LHMStatusResult {
-	defer common.RecoverPanic()
-	mgr := common.GetLHMManager()
-	st := mgr.Status()
-	return LHMStatusResult{
-		Available:  st.Available,
-		Running:    st.Running,
-		NeedsAdmin: st.NeedsAdmin,
-		Version:    st.Version,
-		Error:      st.Error,
-	}
-}
-
-// GetLHMAuthorization returns the explanation shown to the user before the UAC
-// elevation prompt.  This lets the app display exactly what the admin elevation
-// is required for, before triggering the Windows UAC dialog.
-func (s *SysOps) GetLHMAuthorization() LHMAuthorization {
-	defer common.RecoverPanic()
-	return LHMAuthorization{
-		Reason: "UniversalOps needs admin privileges to start LibreHardwareMonitor, " +
-			"which reads low-level hardware sensor data (CPU temperature, GPU " +
-			"temperature, fan speeds, voltages). These sensors are restricted to " +
-			"admin-level processes by Windows for security reasons.",
-		Capabilities: []string{
-			"Real-time CPU package temperature",
-			"GPU temperature, utilization, and fan speed",
-			"Motherboard fan speeds and voltages",
-			"NVMe SSD temperature",
-		},
-		Risks: []string{
-			"LibreHardwareMonitor will run as a hidden background process",
-			"It communicates only via local WMI — no network traffic",
-			"The process stops automatically when UniversalOps closes",
-		},
-		BinaryName: "LibreHardwareMonitor.exe",
-		Publisher:  "LibreHardwareMonitor Contributors (MPL-2.0)",
-	}
-}
-
-// DownloadLHM downloads the LHM binary (user consent already obtained via frontend).
-func (s *SysOps) DownloadLHM() LHMStatusResult {
-	defer common.RecoverPanic()
-	mgr := common.GetLHMManager()
-	if mgr.IsAvailable() {
-		return s.GetLHMStatus()
-	}
-
-	ctx := context.Background()
-	err := mgr.Download(ctx, func(downloaded int64, total int64) {
-		common.LogDebug("LHM: Download progress %d / %d", downloaded, total)
-	})
-	if err != nil {
-		st := s.GetLHMStatus()
-		st.Error = fmt.Sprintf("Download failed: %v", err)
-		return st
-	}
-	return s.GetLHMStatus()
-}
-
-// StartLHM starts the LHM process with admin elevation (triggers Windows UAC).
-func (s *SysOps) StartLHM() LHMStatusResult {
-	defer common.RecoverPanic()
-	mgr := common.GetLHMManager()
-
-	// Ensure binary exists first
-	if !mgr.IsAvailable() {
-		st := s.GetLHMStatus()
-		st.Error = "LHM binary not found — download first"
-		return st
-	}
-
-	err := mgr.Start()
-	if err != nil {
-		st := s.GetLHMStatus()
-		st.Error = err.Error()
-		return st
-	}
-	return s.GetLHMStatus()
-}
-
-// StopLHM terminates the LHM background process.
-func (s *SysOps) StopLHM() LHMStatusResult {
-	defer common.RecoverPanic()
-	mgr := common.GetLHMManager()
-	_ = mgr.Stop()
-	return s.GetLHMStatus()
 }
 
 // GetSystemLogs retrieves OS system logs.

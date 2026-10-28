@@ -340,14 +340,8 @@ func (a *App) Startup(ctx context.Context) {
 	// Start the modular engine evaluation loop
 	a.engineLoop.Start(2 * time.Second)
 
-	// ── LibreHardwareMonitor (bundled, user-activated) ──────────────────
-	lhm := common.GetLHMManager()
-	if lhm.IsAvailable() {
-		common.LogInfo("LHM binary found at %s (v%s) — waiting for user to enable sensors",
-			lhm.BinaryPath(), lhm.Status().Version)
-	} else {
-		common.LogInfo("LHM not downloaded — user can enable from Hardware tab")
-	}
+	// Start the modular engine evaluation loop
+	a.engineLoop.Start(2 * time.Second)
 
 	a.startProcessWorker()
 	a.startEcoWorker()
@@ -356,9 +350,6 @@ func (a *App) Startup(ctx context.Context) {
 // Shutdown is called by Wails when the application shuts down.
 func (a *App) Shutdown(ctx context.Context) {
 	common.LogInfo("UniversalOps shutting down")
-
-	// Start bundled LHM before general process cleanup
-	common.GetLHMManager().Stop()
 
 	// 1. Terminate any active child processes (zombie prevention)
 	common.CleanupActiveProcesses()
