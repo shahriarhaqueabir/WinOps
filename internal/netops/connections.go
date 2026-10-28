@@ -137,7 +137,7 @@ func getConnectionsLinux() ([]ConnectionInfo, error) {
 //	sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
 //	0: 0100007F:0019 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 12345 1 0000000000000000 100 0 0 10 0
 func parseProcNet(path string, proto string) ([]ConnectionInfo, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) // #nosec G304 -- fixed /proc paths
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func buildProcInodeMap() map[string]struct {
 
 		// Get process name
 		procName := ""
-		cmdline, err := os.ReadFile(filepath.Join("/proc", pidStr, "comm"))
+		cmdline, err := os.ReadFile(filepath.Join("/proc", pidStr, "comm")) // #nosec G304 -- /proc path built from a numeric PID
 		if err == nil {
 			procName = strings.TrimSpace(string(cmdline))
 		}

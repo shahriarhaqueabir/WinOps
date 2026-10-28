@@ -66,7 +66,7 @@ func renewDHCP(iface string) error {
 		if iface == "" {
 			return fmt.Errorf("interface name required")
 		}
-		_, err := exec.Command("sudo", "dhclient", "-r", iface).CombinedOutput()
+		_, err := exec.Command("sudo", "dhclient", "-r", iface).CombinedOutput() // #nosec G204 -- iface validated by sanitizeInterfaceName
 		return err
 	default:
 		return fmt.Errorf("unsupported platform")
@@ -105,7 +105,7 @@ func setInterfaceState(iface string, enable bool) error {
 		if !enable {
 			action = "down"
 		}
-		_, err := exec.Command("sudo", "ip", "link", "set", iface, action).CombinedOutput()
+		_, err := exec.Command("sudo", "ip", "link", "set", iface, action).CombinedOutput() // #nosec G204 -- iface validated by sanitizeInterfaceName
 		return err
 	default:
 		return fmt.Errorf("unsupported platform")
