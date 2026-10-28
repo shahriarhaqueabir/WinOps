@@ -5,19 +5,22 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	llama "github.com/goccy/go-llama"
 )
 
 // LlamaProvider wraps goccy/go-llama for in-process GGUF inference.
 type LlamaProvider struct {
-	mu            sync.RWMutex
-	modelPath     string
-	effectiveModel string
+	mu                sync.RWMutex
+	modelPath         string
+	effectiveModel    string
+	modelsDirOverride string
 
 	inst  *llama.Llama
 	model *llama.Model
@@ -165,7 +168,26 @@ func modelsDir() string {
 	return filepath.Join(".", "models")
 }
 
-func (p *LlamaProvider) modelsDir() string { return modelsDir() }
+func (p *LlamaProvider) modelsDir() string {
+	if p != nil {
+		p.mu.RLock()
+		defer p.mu.RUnlock()
+		if strings.TrimSpace(p.modelsDirOverride) != "" {
+			return p.modelsDirOverride
+		}
+	}
+	return modelsDir()
+}
+
+// SetModelsDir overrides the directory used to store GGUF models.
+func (p *LlamaProvider) SetModelsDir(dir string) {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.modelsDirOverride = strings.TrimSpace(dir)
+}
 
 func (p *LlamaProvider) ListModels(ctx context.Context) ([]string, error) {
 	dir := p.modelsDir()
@@ -188,13 +210,19 @@ func (p *LlamaProvider) ListModels(ctx context.Context) ([]string, error) {
 	return out, nil
 }
 
-func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress func(any) error) error {
+func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress func(ProgressResponse) error) error {
 	// name may be an http(s) URL or a local filename already present.
-	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
-		if err := os.MkdirAll(p.modelsDir(), 0o755); err != nil {
+	u, err := url.Parse(name)
+	if err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
+		if err := os.MkdirAll(p.modelsDir(), 0o700); err != nil {
 			return err
 		}
-		resp, err := http.Get(name)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+		if err != nil {
+			return err
+		}
+		client := &http.Client{Timeout: 30 * time.Minute}
+		resp, err := client.Do(req) // #nosec G107 -- validated http(s) URL for a user-requested model download
 		if err != nil {
 			return err
 		}
@@ -202,13 +230,17 @@ func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress f
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("download failed: %s", resp.Status)
 		}
+		const maxModelDownloadBytes = int64(64 << 30)
+		if resp.ContentLength > maxModelDownloadBytes {
+			return fmt.Errorf("model download exceeds %d bytes", maxModelDownloadBytes)
+		}
 		total := resp.ContentLength
-		filename := filepath.Base(name)
-		if idx := strings.Index(filename, "?"); idx >= 0 {
-			filename = filename[:idx]
+		filename := filepath.Base(u.Path)
+		if filename == "" || filename == "." || filename == ".." || strings.ContainsAny(filename, `/\`) {
+			return fmt.Errorf("invalid model filename")
 		}
 		dest := filepath.Join(p.modelsDir(), filename)
-		f, err := os.Create(dest)
+		f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- sanitized model filename under models dir
 		if err != nil {
 			return err
 		}
@@ -222,12 +254,14 @@ func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress f
 					return werr
 				}
 				downloaded += int64(n)
+				if downloaded > maxModelDownloadBytes {
+					return fmt.Errorf("model download exceeds %d bytes", maxModelDownloadBytes)
+				}
 				if onProgress != nil {
-					_ = onProgress(map[string]any{
-						"status":     "downloading",
-						"completed":  downloaded,
-						"total":      total,
-						"filename":   filename,
+					_ = onProgress(ProgressResponse{
+						Status:    "downloading",
+						Completed: downloaded,
+						Total:     total,
 					})
 				}
 			}
@@ -239,18 +273,18 @@ func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress f
 			}
 		}
 		if onProgress != nil {
-			_ = onProgress(map[string]any{"status": "success", "filename": filename})
+			_ = onProgress(ProgressResponse{Status: "success"})
 		}
 		return nil
 	}
-	// local: nothing to do
+	// Local path (no download); keep the caller's progress contract.
 	if onProgress != nil {
-		_ = onProgress(map[string]any{"status": "success", "filename": name})
+		_ = onProgress(ProgressResponse{Status: "success"})
 	}
 	return nil
 }
 
-func (p *LlamaProvider) CreateModel(ctx context.Context, name, from, system string, parameters map[string]any, onProgress func(any) error) error {
+func (p *LlamaProvider) CreateModel(ctx context.Context, name, from, system string, parameters map[string]any, onProgress func(ProgressResponse) error) error {
 	// Ensure base model is available (download if URL).
 	if from != "" {
 		if err := p.PullModel(ctx, from, onProgress); err != nil {
@@ -271,10 +305,10 @@ func (p *LlamaProvider) CreateModel(ctx context.Context, name, from, system stri
 	// Store system prompt alongside model.
 	if system != "" {
 		sp := modelPath + ".system.txt"
-		_ = os.WriteFile(sp, []byte(system), 0o644)
+		_ = os.WriteFile(sp, []byte(system), 0o600)
 	}
 	if onProgress != nil {
-		_ = onProgress(map[string]any{"status": "success"})
+		_ = onProgress(ProgressResponse{Status: "success"})
 	}
 	return nil
 }

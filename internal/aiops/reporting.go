@@ -79,5 +79,5 @@ func ReportToCSV(sections []ReportSection) (string, error) {
 
 // SaveReport writes report content to a file.
 func SaveReport(content, path string) error {
-	return os.WriteFile(path, []byte(content), 0644)
+	return os.WriteFile(path, []byte(content), 0600)
 }

@@ -17,7 +17,7 @@ type ModelfileConfig struct {
 
 // ParseModelfile reads an Ollama Modelfile and extracts key configurations.
 func ParseModelfile(path string) (*ModelfileConfig, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) // #nosec G304 -- user-selected Modelfile path
 	if err != nil {
 		return nil, fmt.Errorf("failed to open Modelfile: %w", err)
 	}

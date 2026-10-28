@@ -1,8 +1,12 @@
 package aiops
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -10,14 +14,23 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/ollama/ollama/api"
 )
 
 // ChatMessage represents a message in a chat conversation.
 type ChatMessage struct {
 	Role    string `json:"role"`    // "user", "assistant", "system"
 	Content string `json:"content"` // message content
+}
+
+// ProgressResponse is a single update emitted by long-running Ollama
+// operations (pull/create). It mirrors the relevant fields of Ollama's NDJSON
+// progress stream.
+type ProgressResponse struct {
+	Status    string `json:"status"`
+	Digest    string `json:"digest,omitempty"`
+	Total     int64  `json:"total,omitempty"`
+	Completed int64  `json:"completed,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 // OllamaStatus represents the availability and configuration of Ollama.
@@ -44,6 +57,16 @@ const (
 	// call forever. 45 minutes comfortably covers even a slow multi-GiB pull
 	// while still guaranteeing the operation eventually returns.
 	longRunningHttpTimeout = 45 * time.Minute
+
+	// maxJSONResponseBytes bounds non-streaming JSON responses so a malicious
+	// or malfunctioning local daemon cannot exhaust memory.
+	maxJSONResponseBytes = 8 << 20
+
+	// maxErrorResponseBytes bounds error bodies read from Ollama.
+	maxErrorResponseBytes = 1 << 20
+
+	// maxStreamBytes bounds the total NDJSON progress/chat stream size.
+	maxStreamBytes = 64 << 20
 )
 
 func getOllamaURL() string {
@@ -60,25 +83,66 @@ func getOllamaModel() string {
 	return defaultOllamaModel
 }
 
-func newClient() *api.Client {
-	return newClientWithTimeout(defaultHttpTimeout)
+func newHTTPClient(timeout time.Duration) *http.Client {
+	return &http.Client{Timeout: timeout}
 }
 
-// newLongRunningClient returns an Ollama client with a generous (45-minute)
-// timeout, intended for long-running operations such as model create/pull that
-// may need to download large base models. The operation is still bounded by the
-// caller's context deadline, whichever comes first.
-func newLongRunningClient() *api.Client {
-	return newClientWithTimeout(longRunningHttpTimeout)
-}
-
-func newClientWithTimeout(timeout time.Duration) *api.Client {
-	baseURL := getOllamaURL()
-	u, err := url.Parse(baseURL)
-	if err != nil {
-		u = &url.URL{Scheme: "http", Host: "127.0.0.1:11434"}
+// normalizeBaseURL accepts either a full URL or Ollama's host:port form and
+// returns a URL suitable for appending API paths. Wildcard listen addresses are
+// rewritten to loopback so client calls always target the local daemon.
+func normalizeBaseURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultOllamaURL
 	}
-	return api.NewClient(u, &http.Client{Timeout: timeout})
+	if !strings.Contains(raw, "://") {
+		raw = "http://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return defaultOllamaURL
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return defaultOllamaURL
+	}
+	if host := u.Hostname(); host == "0.0.0.0" || host == "::" {
+		loopback := "127.0.0.1"
+		if port := u.Port(); port != "" {
+			loopback = net.JoinHostPort(loopback, port)
+		}
+		u.Host = loopback
+	}
+	u.Path = strings.TrimRight(u.Path, "/")
+	return u.String()
+}
+
+type ollamaListResponse struct {
+	Models []struct {
+		Name string `json:"name"`
+	} `json:"models"`
+	Error string `json:"error,omitempty"`
+}
+
+type ollamaVersionResponse struct {
+	Version string `json:"version"`
+	Error   string `json:"error,omitempty"`
+}
+
+type ollamaChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type ollamaChatRequest struct {
+	Model    string              `json:"model"`
+	Messages []ollamaChatMessage `json:"messages"`
+	Stream   bool                `json:"stream"`
+}
+
+type ollamaChatResponse struct {
+	Message ollamaChatMessage `json:"message"`
+	Done    bool              `json:"done"`
+	Error   string            `json:"error,omitempty"`
 }
 
 // ── Global Compatibility Wrappers ───────────────────────────────────────────
@@ -148,12 +212,12 @@ func CheckOllamaWithContext(ctx context.Context) (*OllamaStatus, error) {
 }
 
 // PullModel downloads a model using the default client.
-func PullModel(name string, onProgress func(api.ProgressResponse) error) error {
+func PullModel(name string, onProgress func(ProgressResponse) error) error {
 	return PullModelWithContext(context.Background(), name, onProgress)
 }
 
 // PullModelWithContext downloads a model using the default client and context.
-func PullModelWithContext(ctx context.Context, name string, onProgress func(api.ProgressResponse) error) error {
+func PullModelWithContext(ctx context.Context, name string, onProgress func(ProgressResponse) error) error {
 	return getDefaultClient().PullModel(ctx, name, onProgress)
 }
 
@@ -165,7 +229,7 @@ func CreateModel(name, from, system string, parameters map[string]any) error {
 // CreateModelWithContext creates a model using the default client and context.
 // onProgress, if non-nil, is invoked with each progress update from Ollama
 // (useful for surfacing base-model pull progress during persona creation).
-func CreateModelWithContext(ctx context.Context, name, from, system string, parameters map[string]any, onProgress func(api.ProgressResponse) error) error {
+func CreateModelWithContext(ctx context.Context, name, from, system string, parameters map[string]any, onProgress func(ProgressResponse) error) error {
 	return getDefaultClient().CreateModel(ctx, name, from, system, parameters, onProgress)
 }
 
@@ -181,16 +245,22 @@ func DeleteModelWithContext(ctx context.Context, name string) error {
 
 // ── OllamaClient Implementation ─────────────────────────────────────────────
 
-// OllamaClient wraps the official Ollama API client.
+// OllamaClient is a minimal Ollama HTTP API client. It intentionally implements
+// only the endpoints UniversalOps uses, avoiding a dependency on Ollama's full
+// server module and its transitive packages.
 type OllamaClient struct {
-	api            *api.Client
+	httpClient     *http.Client
+	longHTTPClient *http.Client
+	baseURL        string
 	modelMu        sync.RWMutex
 	effectiveModel string
 }
 
 func NewOllamaClient() *OllamaClient {
 	return &OllamaClient{
-		api:            newClient(),
+		httpClient:     newHTTPClient(defaultHttpTimeout),
+		longHTTPClient: newHTTPClient(longRunningHttpTimeout),
+		baseURL:        normalizeBaseURL(getOllamaURL()),
 		effectiveModel: getOllamaModel(),
 	}
 }
@@ -209,6 +279,100 @@ func (c *OllamaClient) GetModel() string {
 	return c.effectiveModel
 }
 
+func (c *OllamaClient) endpoint(path string) string {
+	return strings.TrimRight(c.baseURL, "/") + path
+}
+
+func (c *OllamaClient) doJSON(ctx context.Context, client *http.Client, method, path string, body, out any) error {
+	var reader io.Reader
+	if body != nil {
+		payload, err := json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("ollama request encode failed: %w", err)
+		}
+		reader = bytes.NewReader(payload)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, c.endpoint(path), reader)
+	if err != nil {
+		return fmt.Errorf("ollama request failed: %w", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("ollama request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return decodeOllamaError(resp)
+	}
+	if out == nil {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxErrorResponseBytes))
+		return nil
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxJSONResponseBytes)).Decode(out); err != nil {
+		return fmt.Errorf("ollama response decode failed: %w", err)
+	}
+	return nil
+}
+
+func (c *OllamaClient) doStream(ctx context.Context, client *http.Client, path string, body any, onItem func(json.RawMessage) error) error {
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("ollama request encode failed: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint(path), bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("ollama request failed: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("ollama request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return decodeOllamaError(resp)
+	}
+
+	decoder := json.NewDecoder(io.LimitReader(resp.Body, maxStreamBytes))
+	for {
+		var item json.RawMessage
+		if err := decoder.Decode(&item); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return fmt.Errorf("ollama stream decode failed: %w", err)
+		}
+		if onItem != nil {
+			if err := onItem(item); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func decodeOllamaError(resp *http.Response) error {
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorResponseBytes))
+	var payload struct {
+		Error string `json:"error"`
+	}
+	if json.Unmarshal(body, &payload) == nil && strings.TrimSpace(payload.Error) != "" {
+		return fmt.Errorf("ollama: %s", strings.TrimSpace(payload.Error))
+	}
+	if text := strings.TrimSpace(string(body)); text != "" {
+		return fmt.Errorf("ollama returned %s: %s", resp.Status, text)
+	}
+	return fmt.Errorf("ollama returned %s", resp.Status)
+}
+
 // CheckOllamaBinary returns true if the ollama binary is found in the system PATH.
 func CheckOllamaBinary() bool {
 	_, err := exec.LookPath("ollama")
@@ -218,15 +382,26 @@ func CheckOllamaBinary() bool {
 // PullModel downloads a model from the Ollama library.
 // Uses a long-running client because pulling a large base model can take
 // minutes and must not be cut off by the 120s chat timeout.
-func (c *OllamaClient) PullModel(ctx context.Context, name string, onProgress func(api.ProgressResponse) error) error {
-	req := &api.PullRequest{Model: name}
-	return newLongRunningClient().Pull(ctx, req, onProgress)
+func (c *OllamaClient) PullModel(ctx context.Context, name string, onProgress func(ProgressResponse) error) error {
+	body := map[string]any{"model": name, "stream": true}
+	return c.doStream(ctx, c.longHTTPClient, "/api/pull", body, func(raw json.RawMessage) error {
+		var progress ProgressResponse
+		if err := json.Unmarshal(raw, &progress); err != nil {
+			return fmt.Errorf("ollama pull progress decode failed: %w", err)
+		}
+		if progress.Error != "" {
+			return fmt.Errorf("ollama: %s", progress.Error)
+		}
+		if onProgress != nil {
+			return onProgress(progress)
+		}
+		return nil
+	})
 }
 
 // DeleteModel removes a local model.
 func (c *OllamaClient) DeleteModel(ctx context.Context, name string) error {
-	req := &api.DeleteRequest{Model: name}
-	return c.api.Delete(ctx, req)
+	return c.doJSON(ctx, c.httpClient, http.MethodDelete, "/api/delete", map[string]string{"model": name}, nil)
 }
 
 // CreateModel creates a new model from structured parameters.
@@ -234,25 +409,37 @@ func (c *OllamaClient) DeleteModel(ctx context.Context, name string) error {
 // first (e.g. Qwythos-9B ~6.85 GiB), which exceeds the 120s chat timeout.
 // onProgress, when non-nil, receives each progress update from the create
 // stream so the frontend can show live download/build progress.
-func (c *OllamaClient) CreateModel(ctx context.Context, name string, from string, system string, parameters map[string]any, onProgress func(api.ProgressResponse) error) error {
-	req := &api.CreateRequest{
-		Model:      name,
-		From:       from,
-		System:     system,
-		Parameters: parameters,
+func (c *OllamaClient) CreateModel(ctx context.Context, name string, from string, system string, parameters map[string]any, onProgress func(ProgressResponse) error) error {
+	body := map[string]any{
+		"model":      name,
+		"from":       from,
+		"system":     system,
+		"parameters": parameters,
+		"stream":     true,
 	}
-
-	if onProgress == nil {
-		onProgress = func(resp api.ProgressResponse) error { return nil }
-	}
-	return newLongRunningClient().Create(ctx, req, onProgress)
+	return c.doStream(ctx, c.longHTTPClient, "/api/create", body, func(raw json.RawMessage) error {
+		var progress ProgressResponse
+		if err := json.Unmarshal(raw, &progress); err != nil {
+			return fmt.Errorf("ollama create progress decode failed: %w", err)
+		}
+		if progress.Error != "" {
+			return fmt.Errorf("ollama: %s", progress.Error)
+		}
+		if onProgress != nil {
+			return onProgress(progress)
+		}
+		return nil
+	})
 }
 
 // CheckStatus checks if the Ollama service is available.
 func (c *OllamaClient) CheckStatus(ctx context.Context) (*OllamaStatus, error) {
-	listResp, err := c.api.List(ctx)
-	if err != nil {
+	var listResp ollamaListResponse
+	if err := c.doJSON(ctx, c.httpClient, http.MethodGet, "/api/tags", nil, &listResp); err != nil {
 		return &OllamaStatus{Available: false}, fmt.Errorf("ollama list failed: %w", err)
+	}
+	if listResp.Error != "" {
+		return &OllamaStatus{Available: false}, fmt.Errorf("ollama list failed: %s", listResp.Error)
 	}
 
 	currentModel := c.GetModel()
@@ -275,8 +462,9 @@ func (c *OllamaClient) CheckStatus(ctx context.Context) (*OllamaStatus, error) {
 	}
 
 	version := "detected"
-	if v, err := c.api.Version(ctx); err == nil && v != "" {
-		version = v
+	var versionResp ollamaVersionResponse
+	if err := c.doJSON(ctx, c.httpClient, http.MethodGet, "/api/version", nil, &versionResp); err == nil && versionResp.Version != "" {
+		version = versionResp.Version
 	}
 
 	return &OllamaStatus{
@@ -289,39 +477,28 @@ func (c *OllamaClient) CheckStatus(ctx context.Context) (*OllamaStatus, error) {
 
 // Chat sends a chat request to the Ollama API (non-streaming).
 func (c *OllamaClient) Chat(ctx context.Context, messages []ChatMessage, modelOverride string) (string, error) {
-	apiMessages := make([]api.Message, len(messages))
-	for i, m := range messages {
-		apiMessages[i] = api.Message{
-			Role:    m.Role,
-			Content: m.Content,
-		}
-	}
-
 	model := c.GetModel()
 	if modelOverride != "" {
 		model = modelOverride
 	}
 
-	stream := false
-	req := &api.ChatRequest{
+	reqBody := ollamaChatRequest{
 		Model:    model,
-		Messages: apiMessages,
-		Stream:   &stream,
+		Messages: toOllamaMessages(messages),
+		Stream:   false,
 	}
-
-	var responseText string
-	err := c.api.Chat(ctx, req, func(resp api.ChatResponse) error {
-		responseText += resp.Message.Content
-		return nil
-	})
-	if err != nil {
+	var resp ollamaChatResponse
+	if err := c.doJSON(ctx, c.httpClient, http.MethodPost, "/api/chat", reqBody, &resp); err != nil {
 		return "", fmt.Errorf("ollama chat failed: %w", err)
 	}
+	if resp.Error != "" {
+		return "", fmt.Errorf("ollama chat failed: %s", resp.Error)
+	}
 
+	responseText := resp.Message.Content
 	if responseText == "" {
 		return "", fmt.Errorf("ollama returned empty response")
 	}
-
 	return responseText, nil
 }
 
@@ -329,43 +506,49 @@ func (c *OllamaClient) Chat(ctx context.Context, messages []ChatMessage, modelOv
 // token is delivered via the onToken callback. The final accumulated response
 // is returned along with any error.
 func (c *OllamaClient) ChatStream(ctx context.Context, messages []ChatMessage, modelOverride string, onToken func(string)) (string, error) {
-	apiMessages := make([]api.Message, len(messages))
-	for i, m := range messages {
-		apiMessages[i] = api.Message{
-			Role:    m.Role,
-			Content: m.Content,
-		}
-	}
-
 	model := c.GetModel()
 	if modelOverride != "" {
 		model = modelOverride
 	}
 
-	stream := true
-	req := &api.ChatRequest{
+	reqBody := ollamaChatRequest{
 		Model:    model,
-		Messages: apiMessages,
-		Stream:   &stream,
+		Messages: toOllamaMessages(messages),
+		Stream:   true,
 	}
 
 	var responseText string
-	err := c.api.Chat(ctx, req, func(resp api.ChatResponse) error {
+	err := c.doStream(ctx, c.httpClient, "/api/chat", reqBody, func(raw json.RawMessage) error {
+		var resp ollamaChatResponse
+		if err := json.Unmarshal(raw, &resp); err != nil {
+			return fmt.Errorf("ollama chat stream decode failed: %w", err)
+		}
+		if resp.Error != "" {
+			return fmt.Errorf("ollama: %s", resp.Error)
+		}
 		if resp.Message.Content != "" {
 			responseText += resp.Message.Content
-			onToken(resp.Message.Content)
+			if onToken != nil {
+				onToken(resp.Message.Content)
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return "", fmt.Errorf("ollama chat stream failed: %w", err)
 	}
-
 	if responseText == "" {
 		return "", fmt.Errorf("ollama returned empty response")
 	}
-
 	return responseText, nil
+}
+
+func toOllamaMessages(messages []ChatMessage) []ollamaChatMessage {
+	out := make([]ollamaChatMessage, len(messages))
+	for i, m := range messages {
+		out[i] = ollamaChatMessage(m)
+	}
+	return out
 }
 
 // TruncateHistory ensures the chat history doesn't exceed a safe context window.
