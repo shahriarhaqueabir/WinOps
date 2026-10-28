@@ -12,12 +12,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/ollama/ollama/api"
 	"github.com/shirou/gopsutil/v4/mem"
 
 	"github.com/shahriarhaqueabir/UniversalOps/internal/aiops"
@@ -49,6 +49,7 @@ type AIOps struct {
 	netOps       *NetOps
 	devOps       *DevOps
 	dataDir      string
+	modelsDir    string
 
 	// Configurable models per capability
 	AnalystModel   string
@@ -106,6 +107,12 @@ func NewAIOps(ctx context.Context, pipeline *common.DataPipeline, knowledge *Kno
 		netOps:       netOps,
 		devOps:       devOps,
 		dataDir:      dataDir,
+		modelsDir: func() string {
+			if d := os.Getenv("UNIVERSALOPS_MODELS_DIR"); d != "" {
+				return d
+			}
+			return filepath.Join(dataDir, "models")
+		}(),
 		mcpServer:    mcp.NewServer(pipeline, netOps, devOps),
 		contextCache: &systemContextCache{},
 		provider:     aiops.NewProvider(aiops.DefaultProviderKind(), filepath.Join(dataDir, "models", "model.gguf")),
@@ -135,7 +142,92 @@ func (a *AIOps) requestContext() context.Context {
 func (a *AIOps) SetDataDir(dir string) {
 	defer common.RecoverPanic()
 	a.dataDir = dir
+	if strings.TrimSpace(a.modelsDir) == "" {
+		a.modelsDir = filepath.Join(dir, "models")
+	}
 }
+
+// GetModelsDir returns the directory used to store/download AI models.
+func (a *AIOps) GetModelsDir() string {
+	defer common.RecoverPanic()
+	if strings.TrimSpace(a.modelsDir) == "" {
+		if a.dataDir != "" {
+			return filepath.Join(a.dataDir, "models")
+		}
+		return "models"
+	}
+	return a.modelsDir
+}
+
+// SetModelsDir updates the directory used to store/download AI models.
+func (a *AIOps) SetModelsDir(dir string) error {
+	defer common.RecoverPanic()
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return fmt.Errorf("models directory is required")
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return fmt.Errorf("cannot create directory: %w", err)
+	}
+	testFile := filepath.Join(dir, ".write_test")
+	if err := os.WriteFile(testFile, []byte("ok"), 0600); err != nil {
+		return fmt.Errorf("directory is not writable: %w", err)
+	}
+	os.Remove(testFile)
+	a.modelsDir = dir
+	if a.provider != nil {
+		a.provider.SetModelsDir(dir)
+	}
+	s := common.GetStorage()
+	if s != nil {
+		s.UpsertSetting("models_dir", dir)
+	}
+	return nil
+}
+
+// ListLocalModels returns GGUF/model files present in the models directory.
+func (a *AIOps) ListLocalModels() ([]string, error) {
+	defer common.RecoverPanic()
+	dir := a.GetModelsDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, err
+	}
+	var out []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		lower := strings.ToLower(name)
+		if strings.HasSuffix(lower, ".gguf") || strings.HasSuffix(lower, ".bin") || strings.HasSuffix(lower, ".model") {
+			out = append(out, name)
+		}
+	}
+	return out, nil
+}
+
+// Aliases for compatibility with alternate naming.
+func (a *AIOps) GetModelDir() string                   { return a.GetModelsDir() }
+func (a *AIOps) GetModelsPath() string                 { return a.GetModelsDir() }
+func (a *AIOps) GetModelStoragePath() string           { return a.GetModelsDir() }
+func (a *AIOps) SetModelDir(dir string) error          { return a.SetModelsDir(dir) }
+func (a *AIOps) SetModelsPath(dir string) error        { return a.SetModelsDir(dir) }
+func (a *AIOps) SetModelDownloadPath(dir string) error { return a.SetModelsDir(dir) }
+func (a *AIOps) UpdateModelsConfig(dir string) error   { return a.SetModelsDir(dir) }
+func (a *AIOps) ListModels() ([]string, error) {
+	if a.provider != nil {
+		models, err := a.provider.ListModels(a.requestContext())
+		if err == nil {
+			return models, nil
+		}
+	}
+	return a.ListLocalModels()
+}
+func (a *AIOps) ListAvailableModels() ([]string, error) { return a.ListLocalModels() }
 
 // SetCompanionName persists the AI assistant name.
 func (a *AIOps) SetCompanionName(name string) {
@@ -155,6 +247,12 @@ func (a *AIOps) LoadModels() {
 	}
 	a.AnalystModel, _ = s.GetSetting("model_analyst")
 	a.OptimizerModel, _ = s.GetSetting("model_optimizer")
+	if v, _ := s.GetSetting("models_dir"); strings.TrimSpace(v) != "" {
+		a.modelsDir = v
+		if a.provider != nil {
+			a.provider.SetModelsDir(v)
+		}
+	}
 }
 
 // SetModelForCapability updates and persists a model override for a specific capability.
@@ -874,7 +972,7 @@ func (a *AIOps) GetDataStreamSnapshot() []DataStreamMetric {
 }
 
 // GetOllamaStatus returns the current Ollama service status.
-	func (a *AIOps) GetOllamaStatus() OllamaStatus {
+func (a *AIOps) GetOllamaStatus() OllamaStatus {
 	defer common.RecoverPanic()
 	a.ensureProvider()
 	status, err := a.provider.CheckStatus(a.requestContext())
@@ -904,7 +1002,7 @@ func (a *AIOps) GetDataStreamSnapshot() []DataStreamMetric {
 func (a *AIOps) GetModelfile() (string, error) {
 	defer common.RecoverPanic()
 	path := filepath.Join(a.dataDir, "universalops.modelfile")
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 -- fixed modelfile in app data dir
 	if err != nil {
 		return "", fmt.Errorf("failed to read universalops.modelfile: %w", err)
 	}
@@ -914,9 +1012,15 @@ func (a *AIOps) GetModelfile() (string, error) {
 // SaveModelfile writes the given content to the local universalops.modelfile.
 func (a *AIOps) SaveModelfile(content string) error {
 	defer common.RecoverPanic()
+	if len(content) > 1<<20 {
+		return fmt.Errorf("modelfile content too large")
+	}
+	if strings.ContainsRune(content, 0) {
+		return fmt.Errorf("modelfile content contains invalid characters")
+	}
 	common.LogInfo("AIOps: Saving updated universalops.modelfile")
 	path := filepath.Join(a.dataDir, "universalops.modelfile")
-	err := os.WriteFile(path, []byte(content), 0644)
+	err := os.WriteFile(path, []byte(content), 0600)
 	if err != nil {
 		return fmt.Errorf("failed to save universalops.modelfile: %w", err)
 	}
@@ -933,7 +1037,7 @@ func (a *AIOps) SetOllamaModel(modelName string) {
 // emitCreateProgress emits an ollama:progress event for model creation/pull.
 // It is safe to call from the create/pull progress callback (runs on a worker
 // goroutine) because wailsruntime.EventsEmit is thread-safe.
-func (a *AIOps) emitCreateProgress(resp api.ProgressResponse) error {
+func (a *AIOps) emitCreateProgress(resp aiops.ProgressResponse) error {
 	if a.ctx == nil {
 		return nil
 	}
@@ -950,30 +1054,9 @@ func (a *AIOps) emitCreateProgress(resp api.ProgressResponse) error {
 	return nil
 }
 
-// emitModelProgress is a provider-agnostic progress callback.
-func (a *AIOps) emitModelProgress(r any) error {
-	switch v := r.(type) {
-	case api.ProgressResponse:
-		return a.emitCreateProgress(v)
-	case map[string]any:
-		if a.ctx == nil {
-			return nil
-		}
-		status, _ := v["status"].(string)
-		completed, _ := v["completed"].(int64)
-		total, _ := v["total"].(int64)
-		percent := 0.0
-		if total > 0 {
-			percent = float64(completed) / float64(total) * 100
-		}
-		wailsruntime.EventsEmit(a.ctx, "ollama:progress", OllamaProgress{
-			Status:    status,
-			Percent:   percent,
-			Total:     total,
-			Completed: completed,
-		})
-	}
-	return nil
+// emitModelProgress is the provider progress callback.
+func (a *AIOps) emitModelProgress(r aiops.ProgressResponse) error {
+	return a.emitCreateProgress(r)
 }
 
 // PullModel initiates a model pull and emits progress events to the frontend.
@@ -1117,6 +1200,10 @@ func (a *AIOps) GetAISetupRecommendation() AISetupRecommendation {
 		{Name: qwen3_0_6B_Model, Label: qwen3_0_6B_Label, SizeGB: 0.5},
 	}
 
+	rec.DownloadPath = a.GetModelsDir()
+	rec.ModelPath = a.GetModelsDir()
+	rec.ModelsDir = a.GetModelsDir()
+
 	common.LogInfo("AIOps: SetupRecommendation → canRunQwythos=%t, pullRequired=%t, model=%s",
 		rec.CanRunQwythos, rec.PullRequired, rec.RecommendedModel)
 	return rec
@@ -1131,18 +1218,41 @@ func (a *AIOps) SetupOllamaPersona(baseModel string) error {
 	a.ensureProvider()
 	common.LogInfo("AIOps: SetupOllamaPersona starting (base: %s)", baseModel)
 
+	// Resolve a user-selected local model file/folder into a concrete path.
+	// This supports "select the model from the custom folder it is already in".
+	localModelPath := ""
+	if strings.TrimSpace(baseModel) != "" {
+		if fi, err := os.Stat(baseModel); err == nil {
+			if fi.IsDir() {
+				// Pick the first GGUF/model file in the selected folder.
+				entries, _ := os.ReadDir(baseModel)
+				for _, e := range entries {
+					if e.IsDir() {
+						continue
+					}
+					lower := strings.ToLower(e.Name())
+					if strings.HasSuffix(lower, ".gguf") || strings.HasSuffix(lower, ".bin") || strings.HasSuffix(lower, ".model") {
+						localModelPath = filepath.Join(baseModel, e.Name())
+						break
+					}
+				}
+			} else {
+				localModelPath = baseModel
+			}
+		}
+	}
+	if localModelPath != "" {
+		baseModel = localModelPath
+	}
+
 	// 1. Single CheckOllamaWithContext call — checks for universalops persona + base model
 	common.LogInfo("AIOps: Checking Ollama status for persona setup (base: %s)", baseModel)
 	universalopsExists := false
-	baseModelFound := false
 
 	if status, err := a.provider.CheckStatus(a.requestContext()); err == nil && status.Available {
 		for _, m := range status.AvailableModels {
-			switch {
-			case m == "universalops" || strings.HasPrefix(m, "universalops:"):
+			if m == "universalops" || strings.HasPrefix(m, "universalops:") {
 				universalopsExists = true
-			case m == baseModel || strings.HasPrefix(m, baseModel+":"):
-				baseModelFound = true
 			}
 		}
 	}
@@ -1155,16 +1265,41 @@ func (a *AIOps) SetupOllamaPersona(baseModel string) error {
 		return a.testPersonaConnection()
 	}
 
-	// 2. Ensure base model is pulled locally
-	if !baseModelFound {
-		common.LogInfo("AIOps: Base model %s not found — pulling from registry", baseModel)
-		if err := a.PullModel(baseModel); err != nil {
-			return fmt.Errorf("failed to pull base model %s: %w", baseModel, err)
+	// 2. Validate the selected model source. The app never downloads models itself;
+	// the user must select an already-installed Ollama model or a local GGUF file.
+	validated, err := validateModelSource(baseModel)
+	if err != nil {
+		return fmt.Errorf("invalid model selection: %w", err)
+	}
+	baseModel = validated
+
+	// Confirm the model is actually available (no implicit download).
+	isLocalPath := false
+	if _, err := os.Stat(baseModel); err == nil {
+		isLocalPath = true
+	}
+	if !isLocalPath {
+		// Ollama registry model: must already be installed.
+		found := false
+		if status, err := a.provider.CheckStatus(a.requestContext()); err == nil && status.Available {
+			for _, m := range status.AvailableModels {
+				if m == baseModel || strings.HasPrefix(m, baseModel+":") {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return fmt.Errorf("model %q is not installed in Ollama; select an installed model or a local GGUF file (the app does not download models)", baseModel)
 		}
 	}
 
 	// 3. Write a correct modelfile to data/ for transparency and later editing
 	modelfilePath := filepath.Join(a.dataDir, "universalops.modelfile")
+	fromValue := baseModel
+	if strings.ContainsAny(fromValue, " \t") {
+		fromValue = `"` + fromValue + `"`
+	}
 	modelfileContent := fmt.Sprintf(`FROM %s
 
 # System message for UniversalOps System Analyst
@@ -1179,8 +1314,8 @@ PARAMETER top_k 40
 PARAMETER num_ctx 32768
 PARAMETER stop "</action_request>"
 PARAMETER stop "──"
-`, baseModel, analystSystemPrompt)
-	if err := os.WriteFile(modelfilePath, []byte(modelfileContent), 0644); err != nil {
+`, fromValue, analystSystemPrompt)
+	if err := os.WriteFile(modelfilePath, []byte(modelfileContent), 0600); err != nil {
 		common.LogWarn("AIOps: failed to write modelfile: %v", err)
 	}
 
@@ -1217,6 +1352,27 @@ PARAMETER stop "──"
 }
 
 // testPersonaConnection sends a minimal chat to verify the active model can respond.
+// SetupOllamaPersonaWithModelPath allows callers to specify both a base model
+// and an explicit model file/folder location.
+func (a *AIOps) SetupOllamaPersonaWithModelPath(baseModel, modelPath string) error {
+	defer common.RecoverPanic()
+	if strings.TrimSpace(modelPath) != "" {
+		baseModel = modelPath
+	}
+	return a.SetupOllamaPersona(baseModel)
+}
+
+// SetupFromModelPath / ImportModel helpers for selecting an existing model.
+func (a *AIOps) SetupFromModelPath(modelPath string) error {
+	return a.SetupOllamaPersona(modelPath)
+}
+func (a *AIOps) ImportModel(modelPath string) error {
+	return a.SetupOllamaPersona(modelPath)
+}
+func (a *AIOps) UseExistingModel(modelPath string) error {
+	return a.SetupOllamaPersona(modelPath)
+}
+
 func (a *AIOps) testPersonaConnection() error {
 	resp, err := a.provider.Chat(a.ctx, []aiops.ChatMessage{
 		{Role: "user", Content: "Respond with exactly: OK"},
@@ -1279,7 +1435,7 @@ PARAMETER num_ctx 32768
 PARAMETER stop "</action_request>"
 PARAMETER stop "──"
 `, qwythosModel, analystSystemPrompt)
-		if err := os.WriteFile(modelfilePath, []byte(content), 0644); err != nil {
+		if err := os.WriteFile(modelfilePath, []byte(content), 0600); err != nil {
 			common.LogWarn("AIOps: Failed to create modelfile: %v", err)
 		}
 	}
@@ -1854,12 +2010,12 @@ func (a *AIOps) ExportReportAsPDF(title, markdown string) (string, error) {
 	filename := fmt.Sprintf("Report_%d.md", time.Now().Unix())
 	path := filepath.Join(a.dataDir, "reports", filename)
 
-	_ = os.MkdirAll(filepath.Join(a.dataDir, "reports"), 0755)
+	_ = os.MkdirAll(filepath.Join(a.dataDir, "reports"), 0700)
 
 	report := fmt.Sprintf("# %s\n\n_Generated by %s AI Analyst_\n_Date: %s_\n\n%s",
 		title, a.GetCompanionName(), time.Now().Format(time.RFC1123), markdown)
 
-	err := os.WriteFile(path, []byte(report), 0644)
+	err := os.WriteFile(path, []byte(report), 0600)
 	return path, err
 }
 
@@ -1912,4 +2068,54 @@ func (a *AIOps) metricCategory(name string) string {
 	default:
 		return "general"
 	}
+}
+
+// validateModelSource ensures a selected model source is safe and usable.
+// It never downloads anything; it only validates a local file or registry name.
+func validateModelSource(src string) (string, error) {
+	src = strings.TrimSpace(src)
+	if src == "" {
+		return "", fmt.Errorf("model source is required")
+	}
+	// Reject control characters and newlines to prevent injection.
+	if strings.ContainsAny(src, "\r\n\x00") {
+		return "", fmt.Errorf("model source contains invalid characters")
+	}
+
+	// Local path handling.
+	if strings.ContainsAny(src, `/\`) || strings.HasSuffix(strings.ToLower(src), ".gguf") || strings.HasSuffix(strings.ToLower(src), ".bin") || strings.HasSuffix(strings.ToLower(src), ".model") {
+		abs, err := filepath.Abs(src)
+		if err != nil {
+			return "", fmt.Errorf("invalid path: %w", err)
+		}
+		// Reject quotes/backticks to avoid modelfile injection.
+		if strings.ContainsAny(filepath.Base(abs), `"'`+"`") {
+			return "", fmt.Errorf("model filename contains invalid characters")
+		}
+		info, err := os.Stat(abs)
+		if err != nil {
+			return "", fmt.Errorf("model file not found: %w", err)
+		}
+		if info.IsDir() {
+			return "", fmt.Errorf("model source must be a file, not a directory")
+		}
+		ext := strings.ToLower(filepath.Ext(abs))
+		switch ext {
+		case ".gguf", ".bin", ".model":
+		default:
+			return "", fmt.Errorf("unsupported model file type: %s", ext)
+		}
+		if info.Size() == 0 {
+			return "", fmt.Errorf("model file is empty")
+		}
+		return abs, nil
+	}
+
+	// Registry/model name: allow alphanumerics and common separators only.
+	for _, r := range src {
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == ':' || r == '.' || r == '-' || r == '_' || r == '/') {
+			return "", fmt.Errorf("model name contains invalid characters")
+		}
+	}
+	return src, nil
 }

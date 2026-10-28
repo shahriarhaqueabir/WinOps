@@ -131,7 +131,7 @@ func (d *DevOps) GetDevProcesses() []ProcessInfo {
 // KillProcess terminates a process by PID.
 func (d *DevOps) KillProcess(pid int) CommandResult {
 	defer common.RecoverPanic()
-	err := devops.KillProcess(int32(pid))
+	err := devops.KillProcess(int32(pid)) // #nosec G115 -- PID from UI input
 	if err != nil {
 		return CommandResult{Error: err.Error()}
 	}

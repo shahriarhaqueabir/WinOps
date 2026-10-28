@@ -261,10 +261,10 @@ func (a *App) Startup(ctx context.Context) {
 	dataDir, _ := common.ConfigDir()
 	logsDir, _ := common.LogsDir()
 
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		common.LogWarn("Failed to create data directory: %v", err)
 	}
-	if err := os.MkdirAll(logsDir, 0755); err != nil {
+	if err := os.MkdirAll(logsDir, 0700); err != nil {
 		common.LogWarn("Failed to create logs directory: %v", err)
 	}
 
@@ -481,7 +481,7 @@ func (a *App) GenerateBaselineSnapshot() (*BaselineSnapshot, error) {
 	// Save to data/baseline.json for future comparison
 	path := filepath.Join(a.GetDataDir(), "baseline.json")
 	if b, err := json.MarshalIndent(snapshot, "", "  "); err == nil {
-		_ = os.WriteFile(path, b, 0644)
+		_ = os.WriteFile(path, b, 0600)
 	}
 
 	return snapshot, nil
@@ -490,7 +490,7 @@ func (a *App) GenerateBaselineSnapshot() (*BaselineSnapshot, error) {
 // GetBaselineSnapshot loads the saved baseline snapshot.
 func (a *App) GetBaselineSnapshot() (*BaselineSnapshot, error) {
 	path := filepath.Join(a.GetDataDir(), "baseline.json")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- user-selected or fixed app data path
 	if err != nil {
 		return nil, err
 	}
@@ -651,10 +651,10 @@ func (a *App) UpdateStorageConfig(dbDir string) error {
 
 	// Safety Check: Ensure directory is writable
 	testFile := filepath.Join(dbDir, ".write_test")
-	if err := os.MkdirAll(dbDir, 0755); err != nil {
+	if err := os.MkdirAll(dbDir, 0700); err != nil {
 		return fmt.Errorf("cannot create directory: %w", err)
 	}
-	if err := os.WriteFile(testFile, []byte("ok"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("ok"), 0600); err != nil {
 		return fmt.Errorf("directory is not writable: %w", err)
 	}
 	os.Remove(testFile)
@@ -723,7 +723,7 @@ func (a *App) UpdateLogsConfig(logDir string) error {
 	common.LogInfo("App: Relocating log file to %s", logPath)
 
 	common.CloseLogger()
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0700); err != nil {
 		return fmt.Errorf("failed to create log dir: %w", err)
 	}
 
@@ -735,6 +735,29 @@ func (a *App) UpdateLogsConfig(logDir string) error {
 	common.LogInfo("App: Logs successfully relocated.")
 	return nil
 }
+
+// GetModelsDir returns the directory used to store/download AI models.
+func (a *App) GetModelsDir() string {
+	if a.AIOps == nil {
+		return "models"
+	}
+	return a.AIOps.GetModelsDir()
+}
+
+// UpdateModelsConfig updates the directory used to store/download AI models.
+func (a *App) UpdateModelsConfig(dir string) error {
+	if a.AIOps == nil {
+		return fmt.Errorf("ai ops unavailable")
+	}
+	return a.AIOps.SetModelsDir(dir)
+}
+
+// Aliases for compatibility.
+func (a *App) GetModelDir() string            { return a.GetModelsDir() }
+func (a *App) GetModelsPath() string          { return a.GetModelsDir() }
+func (a *App) SetModelsDir(dir string) error  { return a.UpdateModelsConfig(dir) }
+func (a *App) SetModelDir(dir string) error   { return a.UpdateModelsConfig(dir) }
+func (a *App) SetModelsPath(dir string) error { return a.UpdateModelsConfig(dir) }
 
 // GetSystemCapabilities returns a list of detected tools and binaries on the host.
 func (a *App) GetSystemCapabilities() []common.CapabilityInfo {
@@ -829,7 +852,7 @@ func (a *App) ReadTextFile(path string) (string, error) {
 	if info.IsDir() {
 		return "", fmt.Errorf("cannot read directory: %s", path)
 	}
-	content, err := os.ReadFile(cleanPath)
+	content, err := os.ReadFile(cleanPath) // #nosec G304 -- caller-provided path after clean check
 	if err != nil {
 		return "", err
 	}
@@ -1240,13 +1263,6 @@ func safeLastN(values []float64, n int) []float64 {
 		return values
 	}
 	return values[len(values)-n:]
-}
-
-func lastValue(values []float64) float64 {
-	if len(values) == 0 {
-		return 0
-	}
-	return values[len(values)-1]
 }
 
 // validateOllamaEnv checks OLLAMA_HOST and OLLAMA_MODEL at startup.

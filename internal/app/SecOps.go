@@ -206,31 +206,6 @@ func (s *SecOps) executeApplyHardening(checkName string) common.SecActionResult 
 	return common.SecActionResult{Success: true, Message: msg}
 }
 
-// executeSetFirewallRuleState enables or disables a firewall rule.
-func (s *SecOps) executeSetFirewallRuleState(name string, enable bool) bool {
-	common.LogInfo("Setting firewall rule %s enabled=%v", name, enable)
-	err := secops.SetFirewallRuleState(name, enable)
-	if err != nil {
-		common.LogWarn("SetFirewallRuleState failed: %v", err)
-		return false
-	}
-
-	action := "disabled"
-	if enable {
-		action = "enabled"
-	}
-	if s.eventBus != nil {
-		s.eventBus.Emit(common.NewEvent(
-			common.CatSecurity,
-			common.EventInfo,
-			"secops",
-			"Firewall rule changed",
-			fmt.Sprintf("Firewall rule '%s' %s", name, action),
-		))
-	}
-	return true
-}
-
 // GetSecurityScore computes a security posture score from existing data sources.
 func (s *SecOps) GetSecurityScore() SecurityScore {
 	defer common.RecoverPanic()
@@ -776,7 +751,7 @@ func (s *SecOps) KillProcessTree(pid int) common.ActionPreview {
 
 // executeKillProcessTree force-kills a process tree by parent PID.
 func (s *SecOps) executeKillProcessTree(pid int) common.SecActionResult {
-	err := sysopsPkg.KillProcessTree(int32(pid))
+	err := sysopsPkg.KillProcessTree(int32(pid)) // #nosec G115 -- PID from UI input
 	if err != nil {
 		common.LogWarn("KillProcessTree failed: %v", err)
 		return common.SecActionResult{Success: false, Error: err.Error()}
@@ -824,16 +799,6 @@ func (s *SecOps) DisableAccount(username string) common.ActionPreview {
 		Risks:       []string{"User will be unable to log in", "May disrupt active sessions or scheduled tasks running under this account"},
 		Rollback:    "Can be re-enabled via the Identity & Access tab or Computer Management.",
 	}
-}
-
-// executeDisableAccount disables a local user account.
-func (s *SecOps) executeDisableAccount(username string) common.SecActionResult {
-	result, err := secops.DisableAccount(username)
-	if err != nil {
-		common.LogWarn("DisableAccount failed: %v", err)
-		return common.SecActionResult{Success: false, Error: err.Error()}
-	}
-	return *result
 }
 
 // ListForensics returns all forensic snapshots.

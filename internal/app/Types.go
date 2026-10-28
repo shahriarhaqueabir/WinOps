@@ -956,6 +956,9 @@ type AISetupRecommendation struct {
 	SystemRAMGB      float64       `json:"system_ram_gb"`
 	SystemCPUThreads int           `json:"system_cpu_threads"`
 	Timestamp        string        `json:"timestamp"`
+	DownloadPath     string        `json:"download_path,omitempty"`
+	ModelPath        string        `json:"model_path,omitempty"`
+	ModelsDir        string        `json:"models_dir,omitempty"`
 	FallbackModels   []ModelOption `json:"fallback_models,omitempty"`
 }
 
