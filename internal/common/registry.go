@@ -185,13 +185,3 @@ func (r *CollectorRegistry) GetCollector(id CollectorID) Collector {
 	}
 	return mc.Collector
 }
-
-// markRun updates the lastRun timestamp for a collector.
-// Used internally by the scheduler after a successful collect cycle.
-func (r *CollectorRegistry) markRun(id CollectorID) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if mc, ok := r.collectors[id]; ok {
-		mc.lastRun = time.Now()
-	}
-}

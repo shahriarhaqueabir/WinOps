@@ -27,7 +27,7 @@ func FormatPercent(pct float64) string {
 
 // FormatUptime converts uptime seconds to a human string.
 func FormatUptime(seconds uint64) string {
-	d := time.Duration(seconds) * time.Second
+	d := time.Duration(seconds) * time.Second // #nosec G115 -- seconds is uint64 bounded by uptime
 	days := int(d.Hours() / 24)
 	hours := int(d.Hours()) % 24
 	mins := int(d.Minutes()) % 60

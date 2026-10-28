@@ -137,7 +137,7 @@ func (m *LHMManager) Download(ctx context.Context, progress func(downloaded int6
 		return nil // Already have it
 	}
 
-	if err := os.MkdirAll(m.dirPath, 0755); err != nil {
+	if err := os.MkdirAll(m.dirPath, 0700); err != nil {
 		return fmt.Errorf("create lhm dir: %w", err)
 	}
 
@@ -162,9 +162,13 @@ func (m *LHMManager) Download(ctx context.Context, progress func(downloaded int6
 		return fmt.Errorf("download LHM: HTTP %d", resp.StatusCode)
 	}
 
+	const maxLHMDownloadBytes = int64(256 << 20)
 	totalSize := resp.ContentLength
+	if totalSize > maxLHMDownloadBytes {
+		return fmt.Errorf("LHM download exceeds %d bytes", maxLHMDownloadBytes)
+	}
 
-	out, err := os.Create(zipPath)
+	out, err := os.OpenFile(zipPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- fixed zip path in app data dir
 	if err != nil {
 		return fmt.Errorf("create zip file: %w", err)
 	}
@@ -191,6 +195,10 @@ func (m *LHMManager) Download(ctx context.Context, progress func(downloaded int6
 				return fmt.Errorf("write zip: %w", err)
 			}
 			downloaded += int64(n)
+			if downloaded > maxLHMDownloadBytes {
+				err = fmt.Errorf("LHM download exceeds %d bytes", maxLHMDownloadBytes)
+				return err
+			}
 			if progress != nil {
 				progress(downloaded, totalSize)
 			}
@@ -222,11 +230,13 @@ func (m *LHMManager) Download(ctx context.Context, progress func(downloaded int6
 }
 
 func (m *LHMManager) extractZip(zipPath string) error {
-	r, err := zip.OpenReader(zipPath)
+	r, err := zip.OpenReader(zipPath) // #nosec G304 -- fixed zip path in app data dir
 	if err != nil {
 		return err
 	}
 	defer r.Close()
+
+	const maxLHMExtractedBytes = int64(512 << 20)
 
 	for _, f := range r.File {
 		// Flatten: skip top-level directory prefix if present
@@ -246,15 +256,15 @@ func (m *LHMManager) extractZip(zipPath string) error {
 		}
 
 		if f.FileInfo().IsDir() {
-			_ = os.MkdirAll(target, 0755)
+			_ = os.MkdirAll(target, 0700)
 			continue
 		}
 
-		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
 			return err
 		}
 
-		outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, f.Mode())
+		outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- zip-slip checked target under app data dir
 		if err != nil {
 			return err
 		}
@@ -265,11 +275,14 @@ func (m *LHMManager) extractZip(zipPath string) error {
 			return err
 		}
 
-		_, err = io.Copy(outFile, rc)
+		written, err := io.Copy(outFile, io.LimitReader(rc, maxLHMExtractedBytes+1)) // #nosec G110 -- bounded decompression
 		rc.Close()
 		outFile.Close()
 		if err != nil {
 			return err
+		}
+		if written > maxLHMExtractedBytes {
+			return fmt.Errorf("zip entry exceeds %d bytes: %s", maxLHMExtractedBytes, f.Name)
 		}
 	}
 	return nil
@@ -369,7 +382,7 @@ func (m *LHMManager) Stop() error {
 
 	for _, p := range dst {
 		// Use taskkill /F for reliable termination (LHM may hold kernel handles)
-		killCmd := exec.Command("taskkill", "/F", "/PID", fmt.Sprintf("%d", uint32(p.ProcessId)))
+		killCmd := exec.Command("taskkill", "/F", "/PID", fmt.Sprintf("%d", uint32(p.ProcessId))) // #nosec G204,G115 -- numeric PID from WMI
 		_ = killCmd.Run()
 		LogInfo("LHM: Terminated process PID %d", p.ProcessId)
 	}

@@ -104,7 +104,7 @@ func assignJobForCmd(cmd *exec.Cmd) {
 	ph, err := windows.OpenProcess(
 		windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE|windows.SYNCHRONIZE,
 		false,
-		uint32(pid),
+		uint32(pid), // #nosec G115 -- PID from process registry
 	)
 	if err != nil {
 		// Process may have already exited. Close the job handle and move on.

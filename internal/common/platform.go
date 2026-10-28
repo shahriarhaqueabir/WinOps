@@ -80,12 +80,13 @@ func ConfigDir() (string, error) {
 }
 
 // LogsDir returns the application logs directory path.
+// Logs are stored alongside the database under the app data directory.
 func LogsDir() (string, error) {
 	base := GetBaseDir()
 	if base == "." {
-		return "logs", nil
+		return "data", nil
 	}
-	return filepath.Join(base, "logs"), nil
+	return filepath.Join(base, "data"), nil
 }
 
 // IsOnboarded checks if the onboarding marker file exists in the data dir.
@@ -98,10 +99,10 @@ func IsOnboarded() bool {
 // MarkOnboarded creates the onboarding marker file.
 func MarkOnboarded() error {
 	dir, _ := ConfigDir()
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, ".onboarded"), []byte{}, 0644)
+	return os.WriteFile(filepath.Join(dir, ".onboarded"), []byte{}, 0600)
 }
 
 // ClearOnboarded removes the onboarding marker.

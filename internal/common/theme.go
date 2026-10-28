@@ -354,7 +354,7 @@ func LoadTheme() ThemeName {
 	if err != nil {
 		return ThemeDefault
 	}
-	data, err := os.ReadFile(filepath.Join(dir, ".theme"))
+	data, err := os.ReadFile(filepath.Join(dir, ".theme")) // #nosec G304 -- fixed config filename
 	if err != nil {
 		return ThemeDefault
 	}
@@ -367,10 +367,10 @@ func SaveTheme(name ThemeName) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, ".theme"), []byte(name), 0644)
+	return os.WriteFile(filepath.Join(dir, ".theme"), []byte(name), 0600)
 }
 
 // CurrentTheme returns the active common theme.

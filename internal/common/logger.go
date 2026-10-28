@@ -84,7 +84,7 @@ func InitLogger(filename string) error {
 		filename = filepath.Join("logs", "universalops.log")
 	}
 
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600) // #nosec G304,G302 -- caller-selected log path, restricted permissions
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}

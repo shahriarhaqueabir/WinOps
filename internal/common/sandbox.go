@@ -22,7 +22,7 @@ var (
 
 // HiddenCommand creates a regular exec.Cmd that does not show a console window on Windows.
 func HiddenCommand(name string, args ...string) *exec.Cmd {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) // #nosec G204 -- generic process launcher; callers control name/args
 	if IsWindows() {
 		if cmd.SysProcAttr == nil {
 			cmd.SysProcAttr = &syscall.SysProcAttr{}
@@ -34,7 +34,7 @@ func HiddenCommand(name string, args ...string) *exec.Cmd {
 
 // HiddenCommandContext creates a regular exec.Cmd with context that does not show a console window on Windows.
 func HiddenCommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, name, args...) // #nosec G204 -- generic process launcher; callers control name/args
 	if IsWindows() {
 		if cmd.SysProcAttr == nil {
 			cmd.SysProcAttr = &syscall.SysProcAttr{}
@@ -71,7 +71,7 @@ func CleanupActiveProcesses() {
 		LogInfo("Cleanup: Terminating orphaned process %d (%s)", pid, cmd.Path)
 		if runtime.GOOS == "windows" {
 			// On Windows, TaskKill is more reliable for tree cleanup
-			killCmd := exec.Command("taskkill", "/F", "/T", "/PID", strconv.Itoa(pid))
+			killCmd := exec.Command("taskkill", "/F", "/T", "/PID", strconv.Itoa(pid)) // #nosec G204 -- numeric PID from the active process registry
 			_ = killCmd.Run()
 		} else {
 			_ = cmd.Process.Kill()
@@ -252,20 +252,20 @@ func RemediationSandbox() SandboxConfig {
 
 // SandboxedCommand creates a sandboxed command with default restrictions.
 func SandboxedCommand(name string, args ...string) *SandboxedCmd {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) // #nosec G204 -- generic process launcher; callers control name/args
 	return applySandbox(cmd, DefaultSandbox())
 }
 
 // SandboxedCommandWithConfig creates a sandboxed command with custom config.
 func SandboxedCommandWithConfig(cfg SandboxConfig, name string, args ...string) *SandboxedCmd {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) // #nosec G204 -- generic process launcher; callers control name/args
 	return applySandbox(cmd, cfg)
 }
 
 // SandboxedCommandWithConfigContext creates a sandboxed command with custom config
 // that respects the given context for cancellation/deadlines.
 func SandboxedCommandWithConfigContext(ctx context.Context, cfg SandboxConfig, name string, args ...string) *SandboxedCmd {
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, name, args...) // #nosec G204 -- generic process launcher; callers control name/args
 	return applySandbox(cmd, cfg)
 }
 
@@ -273,7 +273,7 @@ func SandboxedCommandWithConfigContext(ctx context.Context, cfg SandboxConfig, n
 // Use this instead of exec.Command for tasks that don't need sandboxing
 // but must be terminated on application exit.
 func TrackedCommand(name string, args ...string) *exec.Cmd {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) // #nosec G204 -- generic process launcher; callers control name/args
 	// Note: We can only register after Start() is called, but we can't
 	// easily wrap exec.Cmd without changing all call sites to a new type.
 	// We'll rely on developers calling Start() on SandboxedCmd or

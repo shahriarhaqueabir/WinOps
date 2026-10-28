@@ -311,7 +311,7 @@ func (r *CapabilityRegistry) discoverWindows(id CapabilityID) (string, error) {
 	case CapOllama:
 		local := os.Getenv("LOCALAPPDATA")
 		path := filepath.Join(local, "Programs", "Ollama", "ollama.exe")
-		if _, err := os.Stat(path); err == nil {
+		if _, err := os.Stat(path); err == nil { // #nosec G703 -- fixed tool path under LOCALAPPDATA
 			return path, nil
 		}
 	case CapDocker:

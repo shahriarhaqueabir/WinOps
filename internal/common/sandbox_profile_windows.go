@@ -23,7 +23,7 @@ func DeriveAppContainerSID(name string) (*windows.SID, error) {
 	}
 
 	var sid *windows.SID
-	r1, _, err := procDeriveSid.Call(
+	r1, _, _ := procDeriveSid.Call(
 		uintptr(unsafe.Pointer(namePtr)),
 		uintptr(unsafe.Pointer(&sid)),
 	)
@@ -49,7 +49,7 @@ func EnsureAppContainerProfile(name, displayName string) (*windows.SID, error) {
 	)
 
 	const HRESULT_ALREADY_EXISTS = 0x800700B7
-	if r1 != 0 && uint32(r1) != HRESULT_ALREADY_EXISTS {
+	if r1 != 0 && uint32(r1) != uint32(HRESULT_ALREADY_EXISTS) { // #nosec G115 -- HRESULT is an error code
 		return nil, fmt.Errorf("CreateAppContainerProfile failed: 0x%x", r1)
 	}
 

@@ -108,7 +108,7 @@ func InitStorage(path string) error {
 	// Ensure directory exists
 	dir := filepath.Dir(path)
 	if dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0700); err != nil {
 			return fmt.Errorf("create storage dir: %w", err)
 		}
 	}
@@ -635,7 +635,7 @@ func (s *Storage) metricsLoggerLoop() {
 			s.statsMu.Unlock()
 
 			if count > 0 {
-				avg := dur / time.Duration(count)
+				avg := dur / time.Duration(int64(count)) // #nosec G115 -- count is a small internal counter
 				LogDebug("SQLITE_METRICS | batches=%d | total_dur=%v | avg_dur=%v", count, dur, avg)
 			} else {
 				LogDebug("SQLITE_METRICS | heartbeat (no writes)")
@@ -702,17 +702,6 @@ func (s *Storage) insertLogsBatch(batch []LogWrite) {
 	if err := tx.Commit(); err != nil {
 		LogInfo("Batch insert logs commit: %v", err)
 		return
-	}
-}
-
-// flushMetrics blocks until all pending metric writes are persisted.
-// Intended for tests; accessible within the package.
-func (s *Storage) flushMetrics() {
-	done := make(chan struct{})
-	select {
-	case s.flushCh <- done:
-		<-done
-	case <-s.closeCh:
 	}
 }
 
@@ -1060,18 +1049,16 @@ type LogTimelineBucket struct {
 // QueryLogTimeline returns time-bucketed log counts for charting.
 // hours >= 24 buckets by hour; hours < 24 buckets by 5 minutes.
 func (s *Storage) QueryLogTimeline(hours int) ([]LogTimelineBucket, error) {
-	var bucketExpr string
-	if hours >= 24 {
-		bucketExpr = `strftime('%Y-%m-%d %H:00:00', timestamp)`
-	} else {
-		// 5-minute buckets via epoch rounding
-		bucketExpr = `datetime(CAST(CAST(strftime('%s', timestamp) AS INTEGER) / 300 AS INTEGER) * 300, 'unixepoch')`
+	if hours < 1 {
+		hours = 1
+	}
+	if hours > 24*365 {
+		hours = 24 * 365
 	}
 
-	timeArg := fmt.Sprintf(`-%d hours`, hours)
-	query := fmt.Sprintf(`
+	const hourlyQuery = `
 		SELECT
-			%s as bucket,
+			strftime('%Y-%m-%d %H:00:00', timestamp) as bucket,
 			COUNT(*) as total,
 			SUM(CASE WHEN level = 'ERROR' THEN 1 ELSE 0 END) as errors,
 			SUM(CASE WHEN level = 'WARN' THEN 1 ELSE 0 END) as warnings,
@@ -1080,7 +1067,25 @@ func (s *Storage) QueryLogTimeline(hours int) ([]LogTimelineBucket, error) {
 		WHERE datetime(timestamp) > datetime('now', ?)
 		GROUP BY bucket
 		ORDER BY bucket ASC
-	`, bucketExpr)
+	`
+	const fiveMinuteQuery = `
+		SELECT
+			datetime(CAST(CAST(strftime('%s', timestamp) AS INTEGER) / 300 AS INTEGER) * 300, 'unixepoch') as bucket,
+			COUNT(*) as total,
+			SUM(CASE WHEN level = 'ERROR' THEN 1 ELSE 0 END) as errors,
+			SUM(CASE WHEN level = 'WARN' THEN 1 ELSE 0 END) as warnings,
+			SUM(CASE WHEN level = 'INFO' THEN 1 ELSE 0 END) as info
+		FROM logs
+		WHERE datetime(timestamp) > datetime('now', ?)
+		GROUP BY bucket
+		ORDER BY bucket ASC
+	`
+
+	query := hourlyQuery
+	if hours < 24 {
+		query = fiveMinuteQuery
+	}
+	timeArg := "-" + strconv.Itoa(hours) + " hours"
 
 	rows, err := s.db.Query(query, timeArg)
 	if err != nil {
@@ -1160,7 +1165,7 @@ func (s *Storage) Prune(olderThan time.Duration) {
 		for {
 			// Select 5000 IDs to delete
 			var ids []interface{}
-			query := fmt.Sprintf("SELECT id FROM %s WHERE %s LIMIT 5000", table, condition)
+			query := fmt.Sprintf("SELECT id FROM %s WHERE %s LIMIT 5000", table, condition) // #nosec G201 -- table/condition are a fixed internal allowlist
 			rows, err := s.db.Query(query, cutoff)
 			if err != nil {
 				LogWarn("Prune: failed to query %s: %v", table, err)
@@ -1184,7 +1189,7 @@ func (s *Storage) Prune(olderThan time.Duration) {
 				placeholders[i] = "?"
 			}
 
-			deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE id IN (%s)", table, strings.Join(placeholders, ","))
+			deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE id IN (%s)", table, strings.Join(placeholders, ",")) // #nosec G201 -- fixed table allowlist; only ? placeholders are interpolated
 			_, err = s.db.Exec(deleteQuery, ids...)
 			if err != nil {
 				LogWarn("Prune: failed to delete batch from %s: %v", table, err)
