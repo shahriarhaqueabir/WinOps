@@ -25,6 +25,8 @@ func NewProvider(kind ProviderKind, modelPath string) AIProvider {
 	switch kind {
 	case ProviderLlama:
 		return NewLlamaProvider(modelPath)
+	case ProviderOpenAI:
+		return NewOpenAIProvider("", "")
 	default:
 		return NewOllamaProvider()
 	}
@@ -35,6 +37,9 @@ func DefaultProviderKind() ProviderKind {
 	if v := os.Getenv("AI_PROVIDER"); v == "llama" {
 		return ProviderLlama
 	}
+	if v := os.Getenv("AI_PROVIDER"); v == "openai" || v == "llama-server" || v == "llama.cpp" {
+		return ProviderOpenAI
+	}
 	return ProviderOllama
 }
 
@@ -44,6 +49,7 @@ type ProviderKind string
 const (
 	ProviderOllama ProviderKind = "ollama"
 	ProviderLlama  ProviderKind = "llama"
+	ProviderOpenAI ProviderKind = "openai"
 )
 
 // OllamaProvider adapts *OllamaClient to AIProvider.
