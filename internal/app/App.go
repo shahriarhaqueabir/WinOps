@@ -277,18 +277,6 @@ func (a *App) Startup(ctx context.Context) {
 	a.AIOps.ctx = ctx
 	a.DevOps.ctx = ctx
 
-	// If using the GPU llama-server backend, start it now (managed child process)
-	if aiops.DefaultProviderKind() == aiops.ProviderOpenAI {
-		mgr := common.GetLlamaServerManager()
-		mgr.Configure("", "", "8080")
-		if err := mgr.Start(); err != nil {
-			common.LogWarn("llama-server failed to start: %v", err)
-		} else {
-			// Re-point provider to the managed server URL
-			a.AIOps.SetModelsDir(a.AIOps.GetModelsDir())
-		}
-	}
-
 	// Initialize persistent storage locally
 	dbPath := filepath.Join(dataDir, "universalops.db")
 	if err := common.InitStorage(dbPath); err != nil {
@@ -322,6 +310,18 @@ func (a *App) Startup(ctx context.Context) {
 	logPath := filepath.Join(logsDir, "universalops.log")
 	if err := common.InitLogger(logPath); err != nil {
 		common.LogWarn("Failed to init local logger: %v", err)
+	}
+
+	// If using the GPU llama-server backend, start it now (managed child process)
+	if aiops.DefaultProviderKind() == aiops.ProviderOpenAI {
+		common.LogInfo("AI provider kind: openai; llama-server binary: %s", common.GetLlamaServerManager().BinaryPath())
+		mgr := common.GetLlamaServerManager()
+		mgr.Configure("", "", "8080")
+		if err := mgr.Start(); err != nil {
+			common.LogWarn("llama-server failed to start: %v", err)
+		} else {
+			common.LogInfo("llama-server started on port 8080")
+		}
 	}
 
 	// Load persisted settings into the pipeline before starting loops
