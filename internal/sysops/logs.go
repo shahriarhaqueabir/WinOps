@@ -96,14 +96,14 @@ func GetSystemLogs(n int, source string) (*SystemLogsResult, error) {
 		// Calculated properties map Get-WinEvent fields to Get-EventLog-compatible JSON
 		// names so the same parseLogOutput code handles both.
 		cmd = common.HiddenCommand("powershell", "-Command",
-			fmt.Sprintf("Get-WinEvent -LogName '%s' -MaxEvents %d -ErrorAction SilentlyContinue | Select-Object @{N='TimeGenerated';E={$_.TimeCreated}}, @{N='EntryType';E={$_.LevelDisplayName}}, @{N='Source';E={$_.ProviderName}}, Message | ConvertTo-Json -Depth 5", logName, n))
+			fmt.Sprintf("Get-WinEvent -LogName '%s' -MaxEvents %d -ErrorAction SilentlyContinue | Select-Object @{N='TimeGenerated';E={$_.TimeCreated}}, @{N='EntryType';E={$_.LevelDisplayName}}, @{N='Source';E={$_.ProviderName}}, Message | ConvertTo-Json -Depth 5", logName, n)) // #nosec G204 -- logName is allowlisted
 	case "linux":
 		if source == "dmesg" {
 			logSource = "dmesg"
-			cmd = exec.Command("dmesg", "--time-format=iso", "-T")
+			cmd = exec.Command("dmesg", "--time-format=iso", "-T") // #nosec G204 -- fixed dmesg args
 		} else {
 			logSource = "journald"
-			cmd = exec.Command("journalctl", "-n", fmt.Sprintf("%d", n), "--no-pager", "-o", "short-iso")
+			cmd = exec.Command("journalctl", "-n", strconv.Itoa(n), "--no-pager", "-o", "short-iso") // #nosec G204 -- n is clamped integer
 		}
 	default:
 		return &SystemLogsResult{Source: "unsupported"}, nil

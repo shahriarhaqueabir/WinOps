@@ -213,9 +213,9 @@ func RestartService(name string) (*ActionResult, error) {
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
-		cmd = common.HiddenCommand("powershell", "-Command", fmt.Sprintf("Restart-Service -Name '%s' -Force", name))
+		cmd = common.HiddenCommand("powershell", "-Command", fmt.Sprintf("Restart-Service -Name '%s' -Force", name)) // #nosec G204 -- name validated by ValidServiceName
 	} else {
-		cmd = exec.Command("sudo", "systemctl", "restart", name)
+		cmd = exec.Command("sudo", "systemctl", "restart", name) // #nosec G204 -- name validated by ValidServiceName
 	}
 
 	output, err := cmd.CombinedOutput()

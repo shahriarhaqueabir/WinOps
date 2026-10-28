@@ -54,7 +54,7 @@ func GetBatteryInfo() (result *BatteryInfo) {
 
 	// BatteryStatus bitmask: bit 1 = charging, bit 2 = fully charged, bit 3 = short-circuit
 	charging := b.BatteryStatus&2 != 0 || b.BatteryStatus&6 != 0
-	percent := float64(uint16(b.EstimatedChargeRemaining))
+	percent := float64(uint16(b.EstimatedChargeRemaining)) // #nosec G115 -- WMI value
 
 	timeLeft := int64(b.EstimatedRunTime)
 	// 0x7FFFFFFF means unknown on Windows

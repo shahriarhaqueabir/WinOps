@@ -47,7 +47,7 @@ func GetBaseboardInfo() *BaseboardInfo {
 	chassis := "Unknown"
 	if err := common.WMIQueryWithTimeout("SELECT ChassisTypes FROM Win32_SystemEnclosure", &enc, 2*time.Second); err == nil && len(enc) > 0 {
 		if len(enc[0].ChassisTypes) > 0 {
-			chassis = mapChassisType(uint16(enc[0].ChassisTypes[0]))
+			chassis = mapChassisType(uint16(enc[0].ChassisTypes[0])) // #nosec G115 -- WMI value
 		}
 	}
 
@@ -90,7 +90,7 @@ func GetPhysicalDisks() ([]PhysicalDisk, error) {
 			DeviceID:     d.DeviceID,
 			Model:        d.Model,
 			MediaType:    d.MediaType,
-			Size:         uint64(d.Size),
+			Size:         uint64(d.Size), // #nosec G115 -- WMI value
 			Status:       d.Status,
 			SerialNumber: strings.TrimSpace(d.SerialNumber),
 		}
@@ -115,9 +115,9 @@ func GetDetailedBatteryHealth() (*BatteryHealth, error) {
 	health := &BatteryHealth{
 		Percent:    int(b.EstimatedChargeRemaining),
 		Charging:   b.BatteryStatus == 2 || b.BatteryStatus == 6 || b.BatteryStatus == 7,
-		DesignCap:  uint32(b.DesignCapacity),
-		FullCap:    uint32(b.FullChargeCapacity),
-		CycleCount: uint32(b.CycleCount),
+		DesignCap:  uint32(b.DesignCapacity),     // #nosec G115 -- WMI value
+		FullCap:    uint32(b.FullChargeCapacity), // #nosec G115 -- WMI value
+		CycleCount: uint32(b.CycleCount),         // #nosec G115 -- WMI value
 	}
 
 	if b.DesignCapacity > 0 {

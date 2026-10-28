@@ -159,11 +159,11 @@ func parseWMIRAM(val interface{}) uint64 {
 	}
 	switch v := val.(type) {
 	case int32:
-		return uint64(uint32(v))
+		return uint64(uint32(v)) // #nosec G115 -- WMI value
 	case uint32:
 		return uint64(v)
 	case int64:
-		return uint64(v)
+		return uint64(v) // #nosec G115 -- WMI value
 	case uint64:
 		return v
 	case float64:
