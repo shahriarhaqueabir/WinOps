@@ -31,13 +31,13 @@ type DefenderStatus struct {
 // On non-Windows systems it returns an error indicating the feature is unavailable.
 func GetDefenderStatus() (*DefenderStatus, error) {
 	if !common.IsWindows() {
-		return nil, fmt.Errorf("Windows Defender is not available on this platform")
+		return nil, fmt.Errorf("defender is not available on this platform")
 	}
 
 	// Pre-check: verify Defender is installed by looking for MpCmdRun.exe
 	defenderPath := filepath.Join(os.Getenv("ProgramFiles"), "Windows Defender", "MpCmdRun.exe")
-	if _, err := os.Stat(defenderPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("Windows Defender not installed on this system")
+	if _, err := os.Stat(defenderPath); os.IsNotExist(err) { // #nosec G703 -- fixed Defender path under ProgramFiles
+		return nil, fmt.Errorf("defender not installed on this system")
 	}
 
 	var errs []error

@@ -158,10 +158,10 @@ func ExportForensicBundle(id string) (*common.SecActionResult, error) {
 	// Export the forensic snapshot to a JSON file in data/forensics/
 	dataDir, _ := common.ConfigDir()
 	exportDir := filepath.Join(dataDir, "forensics")
-	_ = os.MkdirAll(exportDir, 0755)
+	_ = os.MkdirAll(exportDir, 0700)
 
 	filename := filepath.Join(exportDir, id+".json")
-	err = os.WriteFile(filename, []byte(record.DataJSON), 0644)
+	err = os.WriteFile(filename, []byte(record.DataJSON), 0600)
 	if err != nil {
 		return &common.SecActionResult{Success: false, Error: err.Error()}, nil
 	}

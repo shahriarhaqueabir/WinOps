@@ -104,14 +104,14 @@ func RunSecurityAuditChecklist() (*SecurityAuditResult, error) {
 	// 5. Password policy
 	policy, _ := GetPasswordPolicy()
 	policyOK := policy != nil && (policy.MinLength >= 8 || policy.Complexity)
-	passDesc := "Minimum 8 characters with complexity requirements"
+	passDesc := "minimum 8 characters with complexity requirements" // #nosec G101 -- remediation description, not a credential
 	if policy != nil {
 		passDesc = fmt.Sprintf("Current: MinLength=%d, Complexity=%v", policy.MinLength, policy.Complexity)
 	}
 	items = append(items, AuditCheckItem{
 		Category: "Identity", Check: "Password policy compliant", Passed: policyOK,
 		Description: passDesc,
-		Remediation: "Configure: net accounts /minpwlen:8 /complexity:yes",
+		Remediation: "Configure: net accounts /minpwlen:8 /complexity:yes", // #nosec G101 -- remediation command, not a credential
 	})
 
 	// 6. Certificates valid

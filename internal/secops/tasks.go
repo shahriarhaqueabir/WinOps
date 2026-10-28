@@ -438,7 +438,7 @@ func parseCronTab() []ScheduledTask {
 // parseCronFile parses a single crontab file.
 func parseCronFile(path string) []ScheduledTask {
 	var tasks []ScheduledTask
-	file, err := os.Open(path)
+	file, err := os.Open(path) // #nosec G304 -- fixed crontab paths
 	if err != nil {
 		return tasks
 	}
