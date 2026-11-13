@@ -462,12 +462,15 @@ func (a *App) GetPerformanceProfile() PerformanceProfile {
 }
 
 type BaselineSnapshot struct {
-	Timestamp time.Time `json:"timestamp"`
-	Hardware  any       `json:"hardware"`
-	Software  any       `json:"software"`
-	Network   any       `json:"network"`
-	Security  any       `json:"security"`
-	Health    any       `json:"health"`
+	// Stored as RFC3339 text so the Wails binding generator can produce a
+	// typed (string) frontend model instead of an untyped `any` and so
+	// existing baseline.json files keep unmarshalling cleanly.
+	Timestamp string `json:"timestamp"`
+	Hardware  any    `json:"hardware"`
+	Software  any    `json:"software"`
+	Network   any    `json:"network"`
+	Security  any    `json:"security"`
+	Health    any    `json:"health"`
 }
 
 func (a *App) GenerateBaselineSnapshot() (*BaselineSnapshot, error) {
@@ -482,7 +485,7 @@ func (a *App) GenerateBaselineSnapshot() (*BaselineSnapshot, error) {
 	secStatus := a.SecOps.GetFirewallStatus()
 
 	snapshot := &BaselineSnapshot{
-		Timestamp: time.Now(),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Hardware: map[string]any{
 			"cpu":  cpuInfo,
 			"mem":  memInfo,

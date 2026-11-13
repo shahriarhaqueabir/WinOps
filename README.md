@@ -202,11 +202,51 @@ cd cmd/winops-gui/frontend && npm run build
 
 > Some features require Administrator privileges.
 
-### Optional: local AI with Ollama
+### Portable zip recipe (no installer)
 
-```bash
-ollama pull winops   # or llama3, qwen2.5, mistral, ...
+Winops supports a portable layout: keep `Winops.exe` and a `data/` folder
+together in one directory. When a `data/` folder exists next to the exe,
+Winops uses it for the database, logs, baselines, and models instead of
+`%APPDATA%\winops`.
+
+Recommended portable layout:
+
 ```
+Winops/
+├── Winops.exe
+└── data/
+    ├── winops.db          (created on first run)
+    ├── models/            (optional GGUF models)
+    └── .onboarded         (created after onboarding)
+```
+
+To make a portable copy: unzip the release, create an empty `data/` folder
+beside `Winops.exe`, and launch. Zip the whole folder to move it between
+machines. Nothing is installed system-wide.
+
+### Optional: local AI (user-managed, never auto-downloaded)
+
+Winops never downloads an AI runtime or model for you. Pick one of the two
+supported backends and install it yourself, then point Winops at it:
+
+**Option A — Ollama (easiest)**
+1. Install Ollama from https://ollama.com/download
+2. Pull a model: `ollama pull llama3` (or qwen2.5, mistral, ...)
+3. Start Ollama (`ollama serve`) and launch Winops. AIOps auto-detects it.
+
+**Option B — llama.cpp (GPU, bundled-server mode)**
+1. Download a Windows CUDA build of `llama-server.exe` from the
+   [llama.cpp releases](https://github.com/ggerganov/llama.cpp/releases).
+2. Place the `llama-b10952-bin-win-cuda-x64/` folder (or your own build)
+   next to `Winops.exe` so `llama-server.exe` resolves, OR set the
+   `LLAMA_SERVER_PATH` environment variable to its full path.
+3. Download a `.gguf` model of your choice and put it in `data/models/`
+   (or set `UNIVERSALOPS_MODEL_PATH` / `UNIVERSALOPS_MODELS_DIR`).
+4. Launch Winops — it will start and manage `llama-server` as a child process.
+
+In the app, use **Settings → Models** to select the `.gguf` file you
+downloaded. Winops only ever reads a file you explicitly choose; it does
+not fetch or install anything.
 
 ## 📟 Modules
 

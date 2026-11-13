@@ -43,3 +43,4 @@ This guide covers the high-level workflow for Winops. Screenshots referenced her
 - **Local-only by design**: Avoid exporting sensitive logs to untrusted locations.
 - **Workflows**: Use the Workflows/Reports tabs to standardize recurring checks.
 - **Ollama offline**: If Ollama is unreachable, AIOps will report status; other modules remain fully functional.
+- **AI is optional**: Winops works fully without any AI backend. To enable AI, install Ollama or a llama.cpp `llama-server.exe` yourself (see README "Optional: local AI") and select a `.gguf` model in Settings → Models. Winops never downloads a runtime or model automatically.
