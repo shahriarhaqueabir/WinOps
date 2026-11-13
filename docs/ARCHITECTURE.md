@@ -1,15 +1,15 @@
-# UniversalOps — Architecture
+# Winops — Architecture
 
 This document describes the internal architecture for contributors and reviewers.
 
 ## High-Level Overview
 
-UniversalOps is a Wails v2 desktop app. A Go backend exposes bound methods to a React/TypeScript frontend rendered in WebView2. All state is local (SQLite). A collector-based engine loop drives telemetry, alerting, and events at a 2-second cadence.
+Winops is a Wails v2 desktop app. A Go backend exposes bound methods to a React/TypeScript frontend rendered in WebView2. All state is local (SQLite). A collector-based engine loop drives telemetry, alerting, and events at a 2-second cadence.
 
 ## Package Layout
 
 ```
-UniversalOps/
+Winops/
 ├── main.go / main_windows.go       # Wails entry, prereq checks
 ├── internal/
 │   ├── app/                        # Wails-bound facades (App, SysOps, NetOps, SecOps, DevOps, AIOps, Dashboard, …)
@@ -19,7 +19,7 @@ UniversalOps/
 │   ├── secops/                     # Security operations (posture, firewall, defender, hardening, identity, forensics, IR)
 │   ├── devops/                     # Docker, Kubernetes, packages, shell, services
 │   └── aiops/                      # Ollama/llama client, provider, reporting, analyst prompt, workflows, state query
-├── cmd/opsforall-gui/frontend/     # React + TS + Vite frontend
+├── cmd/winops-gui/frontend/     # React + TS + Vite frontend
 └── data/                           # Runtime data (gitignored): SQLite DB, models, baseline
 ```
 
@@ -88,8 +88,8 @@ Collectors → MetricSample → DataPipeline (time-series)
 
 ## Build & Release
 
-- `wails build` produces `build/bin/UniversalOps.exe` (~36 MB).
-- Frontend embedded via `//go:embed all:cmd/opsforall-gui/frontend/dist`.
+- `wails build` produces `build/bin/Winops.exe` (~36 MB).
+- Frontend embedded via `//go:embed all:cmd/winops-gui/frontend/dist`.
 - No CGO (pure-Go SQLite) for reproducible builds.
 
 ## Extension Points

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // PipelineAPI exposes data pipeline bindings to the frontend.

@@ -1,7 +1,10 @@
-# UniversalOps
+# Winops 🖥️ — Local-First Windows Operations Dashboard
 
-**Local-first Windows operations dashboard for SysOps, NetOps, SecOps, DevOps, and AIOps — with Ollama-powered local AI.**
+> **SysOps, NetOps, SecOps, DevOps, and AIOps in one native Windows desktop
+> app** — with Ollama-powered local AI. All analysis runs on your machine. No
+> telemetry. No cloud accounts required. 🛡️
 
+[![CI](https://github.com/shahriarhaqueabir/Winops/actions/workflows/ci.yml/badge.svg)](https://github.com/shahriarhaqueabir/Winops/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](https://www.microsoft.com/windows)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8.svg)](https://go.dev)
@@ -9,223 +12,255 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev)
 [![Ollama](https://img.shields.io/badge/Ollama-Local%20AI-black.svg)](https://ollama.com)
 
-> *All analysis runs on your machine. No telemetry. No cloud accounts required.*
+---
+
+## 🎬 The story — why this exists
+
+Modern IT ops tooling is fragmented and cloud-dependent: Task Manager,
+PowerShell, `netsh`, Wireshark, Docker Desktop, kubectl, Defender consoles, and
+a browser full of SaaS dashboards — each phoning home, each with its own auth.
+At 2 AM on an air-gapped network you need answers _now_, not a login screen.
+Winops collapses that stack into a single native Windows desktop app
+running entirely offline: hardware/process telemetry, network diagnostics,
+security posture, container/K8s management, and a local AI analyst. Nothing
+leaves the machine. 🌙
+
+> 💡 **The one sentence that drove everything:** _One pane of glass for a
+> Windows host, with no cloud dependency._
 
 ---
 
-## The Problem
-
-Modern IT operations tooling is fragmented and cloud-dependent. A typical workflow means juggling Task Manager, PowerShell, `netsh`, Wireshark, Docker Desktop, kubectl, Windows Defender consoles, and a browser tab full of SaaS dashboards — each phoning home, each with its own auth, each a separate window. When something breaks at 2 AM on an air-gapped or restricted network, you need answers *now*, not a login screen.
-
-**UniversalOps** collapses that stack into a single native Windows desktop app that runs entirely offline: hardware and process telemetry, network diagnostics, security posture, container/Kubernetes management, and a locally-hosted AI analyst — all backed by a local SQLite database. Nothing leaves the machine.
-
-## Who It's For
-
-- **SysAdmins / IT generalists** who want one pane of glass for a Windows workstation or server.
-- **Security analysts** triaging a host: posture score, firewall rules, listening ports, hardening gaps, forensics capture.
-- **Network engineers** mapping a LAN, scanning ports, tracing routes, inspecting DNS/ARP.
-- **DevOps engineers** managing Docker/Kubernetes locally without installing three separate GUIs.
-- **Privacy-conscious teams** who cannot send telemetry to a vendor.
-
-## Use Cases
-
-1. **Morning health check** — open the Dashboard, see CPU/RAM/disk/network at a glance, review overnight alerts, run a scheduled workflow.
-2. **Incident triage** — SecOps module scores posture, lists listening ports, captures a forensic snapshot, and the AI assistant correlates telemetry to suggest a root cause.
-3. **Network mapping** — NetOps discovers LAN devices, draws a topology, runs health checks, exports a report.
-4. **Hardening audit** — run all hardening checks, see pass/fail, apply remediations with explicit confirmation.
-5. **AI-assisted ops** — ask "why is CPU spiking?" and get an answer grounded in live metrics, logs, and events from *your* machine.
-
-## How It Works
+## 🔁 The feedback loop (zero → finished)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Wails v2 (WebView2)  ←→  Go backend (bound methods)        │
-│  React 19 + TS frontend      │                              │
-│                              │                              │
-│  ┌──────────┐  ┌──────────┐  │  ┌──────────────────────┐    │
-│  │Dashboard │  │ SysOps   │  │  │ Collectors (registry)│    │
-│  │          │  │ NetOps   │  │  │  → DataPipeline      │    │
-│  │          │  │ SecOps   │  │  │  → AlertEngine       │    │
-│  │          │  │ DevOps   │  │  │  → EventBus          │    │
-│  │          │  │ AIOps    │  │  │  → EngineLoop (2s)   │    │
-│  └──────────┘  └──────────┘  │  └──────────┬───────────┘    │
-│                              │             │                 │
-│                              │  ┌──────────▼───────────┐    │
-│                              │  │ SQLite (modernc)     │    │
-│                              │  │ metrics, logs, events│    │
-│                              │  │ alerts, reports, …   │    │
-│                              │  └──────────────────────┘    │
-│                              │                              │
-│  AIOps ──► Ollama / llama.cpp (local LLM, optional)         │
-└─────────────────────────────────────────────────────────────┘
+  1. 📥 COLLECT    collectors probe OS on intervals → DataPipeline
+  2. 📊 METRICS    EngineLoop (2s tick) emits live metrics to frontend
+  3. 🚨 ALERTS     AlertEngine evaluates rules, persists, debounces flaps
+  4. 🤖 AI         AIOps builds grounded prompt from live context → LLM
+  5. ✅ CONFIRM    AI-suggested remediations require explicit user OK
+  6. 📓 AUDIT      forensics, decisions, logs stored locally (SQLite)
+  7. 🔁 REPEAT     next tick, next incident
 ```
 
-- **Collectors** (`internal/common` collector registry) probe the OS on intervals and push `MetricSample`s into the `DataPipeline`.
-- **EngineLoop** (2 s tick) emits live metrics to the frontend, evaluates `AlertEngine` rules, persists events, and triggers reports.
-- **AlertEngine** holds default + user-defined rules; fires alerts persisted to SQLite; supports flap-count debouncing.
-- **AIOps** builds a grounded prompt from the knowledge snapshot + metric history + recent events, streams tokens from a local LLM, and can emit `<action_request>` tags that require explicit user confirmation via the safety handshake.
-- **Sandbox** (`internal/common/sandbox*.go`) runs OS commands with restricted tokens, dropped privileges, and low integrity on Windows.
+> 🧠 **Secret of the loop:** AI never acts without confirmation. Every
+> remediation is a proposal gated by a safety handshake and audited in
+> `decisions_audit`.
 
-### Code snippet — safe command execution with validation
+---
 
-```go
-// internal/sysops/actions.go
-func RunSystemAction(action SystemAction) (*ActionResult, error) {
-    // ...
-    switch action {
-    case ActionReboot:
-        cmd = common.HiddenCommand("shutdown", "/r", "/t", "0")
-    case ActionFlushDNS:
-        cmd = common.HiddenCommand("ipconfig", "/flushdns")
-    // ...
-    }
-    output, err := cmd.CombinedOutput()
-    // ...
-}
+## 🏗️ Architecture — how the pieces talk
+
+```mermaid
+flowchart LR
+  UI[🖥️ Wails WebView2] <--> Go[🐹 Go backend bound methods]
+  Go --> Collectors[📡 Collectors registry]
+  Collectors --> Pipeline[🔄 DataPipeline]
+  Pipeline --> Loop[⏱️ EngineLoop 2s]
+  Loop --> Alerts[🚨 AlertEngine]
+  Loop --> DB[(🗄️ SQLite modernc)]
+  Go --> AIOps[🤖 AIOps]
+  AIOps --> Ollama[🦙 Ollama local LLM]
+  Go --> Sandbox[🛡️ Sandbox restricted tokens]
 ```
 
-### Code snippet — alert rule persistence with full sync
+| Component      | Responsibility                        | Key location                  |
+| -------------- | ------------------------------------- | ----------------------------- |
+| 🖥️ Frontend    | React 19 + TS, dashboards, charts     | `cmd/winops-gui/frontend/`    |
+| 🐹 Backend     | Go 1.26, collectors, engine, alerts   | `internal/`                   |
+| 📡 Collectors  | OS probing → MetricSample             | `internal/common/`            |
+| 🚨 AlertEngine | Rules, flapping debounce, persistence | `internal/common/alerts.go`   |
+| 🤖 AIOps       | Grounded prompts, streaming LLM       | `internal/aiops/`             |
+| 🗄️ Database    | SQLite (modernc, pure Go, WAL)        | `data/winops.db`        |
+| 🛡️ Sandbox     | Restricted tokens, low integrity      | `internal/common/sandbox*.go` |
 
-```go
-// internal/common/alerts.go
-func (ae *AlertEngine) PersistRules() {
-    ae.mu.RLock()
-    rules := make([]AlertRule, len(ae.rules))
-    copy(rules, ae.rules)
-    ae.mu.RUnlock()
+---
 
-    s := GetStorage()
-    if s == nil { return }
+## 🏆 Good choices (and why they were good)
 
-    tx, err := s.Begin()
-    if err != nil { return }
-    defer tx.Rollback()
+1. **🏠 No telemetry, ever.** No analytics, crash reporting, or phone-home.
+   Only optional user-initiated update check.
+2. **🐹 Pure-Go SQLite** (`modernc.org/sqlite`). No CGO, reproducible builds,
+   WAL mode for concurrent reads.
+3. **📦 Removed the Ollama SDK.** Direct HTTP client = smaller attack surface,
+   fewer transitive deps.
+4. **🎯 Windows-only target.** Dropped Linux/macOS paths to keep the
+   codebase focused and auditable.
+5. **🛡️ Safety handshake.** AI-suggested remediations require explicit
+   confirmation and are audited.
+6. **⚡ Wails v2 over Electron.** Native window, Go bindings, ~36 MB binary.
 
-    // Sync: clear then re-insert so removed rules don't linger.
-    if _, err := tx.Exec(`DELETE FROM alert_rules`); err != nil { return }
-    for _, r := range rules {
-        _ = s.InsertAlertRule(AlertRuleRecord{...}, tx)
-    }
-    _ = tx.Commit()
-}
-```
+---
 
-### Code snippet — frontend data fetching (React Query)
+## 📋 The playbook — recreate from zero
 
-```tsx
-// cmd/opsforall-gui/frontend/src/pages/SysOps/HardwareTab.tsx
-const { data: hw, isLoading, isError, refetch } = useQuery<HardwareInfo>({
-  queryKey: ['sysops-hardware-info'],
-  queryFn: async () => (await call('SysOps.GetHardwareInfo')) as HardwareInfo,
-  refetchInterval: 60000,
-})
-```
+### Phase 0 — Scope 🎯
 
-## Tech Stack & Key Decisions
+1. One sentence: _"One pane of glass for a Windows host, no cloud."_
+2. Boundaries: local-first, no telemetry, least privilege, auditable.
 
-| Layer | Choice | Why |
-|---|---|---|
-| Desktop shell | **Wails v2** (WebView2) | Native window, Go bindings, no Electron bloat, small binary (~36 MB). |
-| Backend | **Go 1.26** | Single static binary, great concurrency for collectors, strong stdlib. |
-| Frontend | **React 19 + TypeScript + Vite** | Modern, fast HMR, type-safe Wails bindings. |
-| Styling | **Tailwind CSS 4** | Utility-first, dark-mode friendly, small runtime. |
-| State/data | **TanStack Query + Zustand** | Server-state caching + lightweight client state. |
-| Charts | **Recharts** | Declarative, composable. |
-| Database | **modernc.org/sqlite** (pure Go) | No CGO, portable, WAL mode for concurrent reads. |
-| System metrics | **gopsutil v4** | Cross-API coverage without cgo. |
-| AI | **Ollama HTTP client** (or in-process `go-llama`) | Local-only LLM; no SDK dependency (removed for security/hygiene). |
-| DNS | **miekg/dns** | Full-featured resolver for advanced queries. |
-| Sandbox | Windows restricted tokens + integrity levels | Least-privilege command execution. |
+### Phase 1 — Skeleton 🦴
 
-**Notable decisions**
-- **No telemetry, ever.** No analytics, crash reporting, or phone-home. The only outbound calls are the optional GitHub update check and on-demand LHM download — both user-initiated.
-- **Pure-Go SQLite** (`modernc.org/sqlite`) to avoid CGO and keep `wails build` reproducible.
-- **Removed the Ollama SDK** in favor of a direct HTTP client — smaller attack surface, fewer transitive deps.
-- **Windows-only target.** Dropped Linux/macOS code paths to keep the codebase focused and auditable.
-- **Safety handshake** for all destructive actions: AI-suggested remediations require explicit user confirmation and are audited in `decisions_audit`.
+3. Wails v2 + Go 1.26 + React 19 + TS + Vite + Tailwind 4.
+4. Pure-Go SQLite (modernc), WAL mode.
+5. Collector registry pattern.
 
-## Privacy & Security
+### Phase 2 — Data pipeline 📊
 
-- **Local-first**: all data in `data/universalops.db` (SQLite, WAL mode). Nothing sent to third parties.
-- **No telemetry**: no analytics, crash reporting, or phone-home.
-- **Least privilege**: destructive actions are labeled and gated behind explicit confirmation.
-- **Auditable**: forensics snapshots, decisions audit, and logs stored locally.
-- **Sandboxed execution**: OS commands run with restricted tokens and low integrity levels.
-- **Input validation**: PIDs, IPs, usernames, service/interface/k8s names validated before reaching `exec`.
-- **Secret scrubbing**: `ScrubSecrets` redacts passwords/keys/tokens from persisted events.
+6. Collectors probe OS on intervals → DataPipeline.
+7. EngineLoop 2s tick emits live metrics.
+8. AlertEngine with default + user rules, flap debouncing.
+9. Retention pruning (default 7 days).
 
-## Modules
+### Phase 3 — Modules 🧩
 
-| Module | Highlights |
-|---|---|
-| **Dashboard** | Live system overview, alerts, health signals, quick actions. |
-| **SysOps** | CPU/mem/disk/GPU/battery telemetry, processes, services, startup items, logs, diagnostics. |
-| **NetOps** | Interfaces, routing, DNS, ARP, Wi-Fi, port scan, ping/traceroute, topology, health checks. |
-| **SecOps** | Posture score, firewall, Defender, listening ports, hardening, identity/password policy, forensics, IR. |
-| **DevOps** | Docker, Kubernetes, packages, services, scripts/workflows, environment diagnostics. |
-| **AIOps** | Local AI chat with live system context, persona/model management, reports, tool-aware workflows. |
-| **Workflows & Reports** | Multi-step checks, scheduling, shareable operational reports. |
+10. SysOps: CPU/mem/disk/GPU, processes, services, logs, diagnostics.
+11. NetOps: interfaces, routing, DNS, ARP, Wi-Fi, port scan, topology.
+12. SecOps: posture score, firewall, Defender, hardening, forensics, IR.
+13. DevOps: Docker, K8s, packages, scripts/workflows.
+14. AIOps: local AI chat with live context, reports, tool workflows.
 
-## Data Stored Locally
+### Phase 4 — AI integration 🤖
 
-`metrics`, `logs`, `events`, `alerts` + `alert_rules`, `conversations`, `settings`, `forensics`, `reports`, `baselines`, `health_scores`, `custom_workflows`, `incidents`, `report_rules`, `decisions_audit`, `slo_definitions`, `topology_devices`/`topology_connections`. All in `data/universalops.db`. Retention is configurable (default 7 days, pruned daily).
+15. Grounded prompts from knowledge snapshot + metric history + events.
+16. Stream tokens from local LLM (Ollama or in-process go-llama).
+17. `<action_request>` tags gated by safety handshake.
 
-## Build From Source
+### Phase 5 — Security hardening 🛡️
+
+18. Sandbox: restricted tokens, dropped privileges, low integrity.
+19. Input validation: PIDs, IPs, usernames, service/interface/k8s names.
+20. `ScrubSecrets` redacts passwords/keys/tokens from persisted events.
+
+### Phase 6 — Ship 🚢
+
+21. `wails build` → `build/bin/Winops.exe`.
+22. Go tests + frontend build. Release on GitHub.
+
+---
+
+## ⚠️ Mistakes to avoid
+
+- 🚫 **Telemetry.** No analytics, crash reporting, or phone-home. Ever.
+- 🚫 **CGO dependencies.** Pure-Go SQLite keeps builds reproducible.
+- 🚫 **Heavy SDKs.** Direct HTTP client over Ollama SDK = smaller attack surface.
+- 🚫 **Cross-platform sprawl.** Windows-only keeps it focused and auditable.
+- 🚫 **Ungated remediation.** AI proposes; human confirms; audit logs it.
+- 🚫 **Trusting user input in exec.** Validate PIDs, IPs, names before exec.
+
+---
+
+## 🧰 Stack
+
+| Layer            | Choice                       | Why                                 |
+| ---------------- | ---------------------------- | ----------------------------------- |
+| 🖥️ Desktop shell | Wails v2 (WebView2)          | Native window, Go bindings, ~36 MB  |
+| 🐹 Backend       | Go 1.26                      | Single binary, great concurrency    |
+| ⚛️ Frontend      | React 19 + TS + Vite         | Modern, fast HMR, type-safe         |
+| 🎨 Styling       | Tailwind CSS 4               | Utility-first, dark-mode friendly   |
+| 📊 State/data    | TanStack Query + Zustand     | Server-state caching + client state |
+| 📈 Charts        | Recharts                     | Declarative, composable             |
+| 🗄️ Database      | modernc.org/sqlite (pure Go) | No CGO, portable, WAL               |
+| 📊 Metrics       | gopsutil v4                  | Cross-API without cgo               |
+| 🤖 AI            | Ollama HTTP client           | Local-only LLM                      |
+| 🌐 DNS           | miekg/dns                    | Full-featured resolver              |
+| 🛡️ Sandbox       | Windows restricted tokens    | Least-privilege execution           |
+
+## 🚀 Build from source
 
 ### Prerequisites
-- [Go 1.26+](https://go.dev/dl/)
-- [Node.js 20+](https://nodejs.org/)
-- [Wails CLI v2](https://wails.io/docs/gettingstarted/installation): `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
-- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
+
+- Go 1.26+, Node.js 20+, Wails CLI v2
+- Microsoft Edge WebView2 Runtime
 
 ### Development
+
 ```bash
-git clone https://github.com/shahriarhaqueabir/UniversalOps.git
-cd UniversalOps
+git clone https://github.com/shahriarhaqueabir/Winops.git
+cd Winops
 wails dev   # hot reload
 ```
 
-### Production Build
+### Production build
+
 ```bash
 wails build
-# Executable: build/bin/UniversalOps.exe
+# Executable: build/bin/Winops.exe
 ```
 
 ### Tests
+
 ```bash
 go build ./... && go vet ./... && go test ./...
-cd cmd/opsforall-gui/frontend && npm run build
+cd cmd/winops-gui/frontend && npm run build
 ```
 
-## Download & Install (Recommended)
+## 📦 Download & install (recommended)
 
-1. Download the latest Windows build from [Releases](https://github.com/shahriarhaqueabir/UniversalOps/releases).
-2. Install the [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (preinstalled on modern Windows).
-3. Run `UniversalOps.exe`. No installer required.
+1. Download latest Windows build from [Releases](https://github.com/shahriarhaqueabir/Winops/releases).
+2. Install [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
+3. Run `Winops.exe`. No installer required.
 
-> Some features require Administrator privileges. Run as Administrator for remediation actions.
+> Some features require Administrator privileges.
 
-### Optional: Local AI with Ollama
+### Optional: local AI with Ollama
+
 ```bash
-ollama pull universalops   # or llama3, qwen2.5, mistral, ...
+ollama pull winops   # or llama3, qwen2.5, mistral, ...
 ```
-Set `OLLAMA_HOST`/`OLLAMA_MODEL` for non-default hosts. Or use `AI_PROVIDER=llama` with a GGUF model in your models directory.
 
-## Contributing & Collaboration
+## 📟 Modules
 
-UniversalOps is open source (MIT) and built for the community. Contributions welcome:
+| Module                 | Highlights                                                  |
+| ---------------------- | ----------------------------------------------------------- |
+| 📊 Dashboard           | Live overview, alerts, health, quick actions                |
+| 🖥️ SysOps              | CPU/mem/disk/GPU, processes, services, logs, diagnostics    |
+| 🌐 NetOps              | Interfaces, routing, DNS, ARP, Wi-Fi, port scan, topology   |
+| 🛡️ SecOps              | Posture score, firewall, Defender, hardening, forensics, IR |
+| 🐳 DevOps              | Docker, K8s, packages, scripts, env diagnostics             |
+| 🤖 AIOps               | Local AI chat with live context, reports, tool workflows    |
+| 📋 Workflows & Reports | Multi-step checks, scheduling, shareable reports            |
 
-- **Bug reports / feature ideas**: open an [issue](https://github.com/shahriarhaqueabir/UniversalOps/issues) with repro steps.
-- **Pull requests**: focused changes, clear descriptions, tests where possible.
-- **Areas needing help**: test coverage (currently minimal), cross-platform hardening, new collectors, UI/UX polish, documentation, translations.
-- **Security reports**: please open a private issue or contact the maintainer directly rather than public disclosure.
+## 🔒 Privacy & security
 
-If you find this project useful, please ⭐ star the repo — it helps others discover it.
+- **Local-first:** all data in `data/winops.db` (SQLite, WAL). Nothing sent.
+- **No telemetry:** no analytics, crash reporting, phone-home.
+- **Least privilege:** destructive actions gated behind explicit confirmation.
+- **Auditable:** forensics, decisions audit, logs stored locally.
+- **Sandboxed:** OS commands run with restricted tokens + low integrity.
+- **Input validation:** PIDs, IPs, usernames, service/interface/k8s names validated.
+- **Secret scrubbing:** `ScrubSecrets` redacts passwords/keys/tokens.
 
-## License
+## 🤝 Contributing
 
-[MIT](LICENSE) © UniversalOps
+Open source (MIT), community welcome:
+
+- 🐛 Bug reports / ideas → [issues](https://github.com/shahriarhaqueabir/Winops/issues)
+- 🔀 PRs: focused, tested, documented
+- 🆘 Help wanted: test coverage, cross-platform hardening, new collectors, UI polish, translations
+- 🔐 Security: private issue or direct contact
+
+⭐ Star the repo if you find it useful!
+
+## 📸 Screenshots
+
+| View 1 | View 2 | View 3 |
+|---|---|---|
+| ![screenshot 1](docs/screenshots/1.png) | ![screenshot 2](docs/screenshots/2.png) | ![screenshot 3](docs/screenshots/3.png) |
+
+> Add your own screenshots under docs/screenshots/.
+
+## 📌 TL;DR
+
+- **Problem:** fragmented, cloud-dependent Windows ops tooling.
+- **Solution:** Go + Wails desktop app: SysOps/NetOps/SecOps/DevOps/AIOps, local AI, no telemetry.
+- **Why it is interesting:** shows how to build a local-first ops dashboard with sandboxed, audited remediation.
+
+
+## 📜 License
+
+[MIT](LICENSE) © Winops
 
 ---
 
-*Built with care for operators who value privacy, speed, and control over their own machines.*
+_Built with care for operators who value privacy, speed, and control over
+their own machines._ 🖥️⚡

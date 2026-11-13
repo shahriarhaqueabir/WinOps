@@ -33,7 +33,7 @@ func NewLlamaProvider(modelPath string) *LlamaProvider {
 	}
 	if modelPath == "" {
 		if home, err := os.UserHomeDir(); err == nil {
-			modelPath = filepath.Join(home, ".universalops", "models", "model.gguf")
+			modelPath = filepath.Join(home, ".winops", "models", "model.gguf")
 		}
 	}
 	return &LlamaProvider{modelPath: modelPath, effectiveModel: filepath.Base(modelPath)}
@@ -163,7 +163,7 @@ func modelsDir() string {
 		return d
 	}
 	if home, err := os.UserHomeDir(); err == nil {
-		return filepath.Join(home, ".universalops", "models")
+		return filepath.Join(home, ".winops", "models")
 	}
 	return filepath.Join(".", "models")
 }

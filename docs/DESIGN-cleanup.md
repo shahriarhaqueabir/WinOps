@@ -1,4 +1,4 @@
-# UniversalOps Cleanup — Design Spec
+# Winops Cleanup — Design Spec
 
 Date: 2026-10-28
 Scope: Four sub-projects executed in order: (1) commit hygiene, (2) populate partial features, (3) remove LibreHardwareMonitor, (4) remove cross-platform leftovers.

@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
-	"github.com/shahriarhaqueabir/UniversalOps/internal/netops"
-	"github.com/shahriarhaqueabir/UniversalOps/internal/sysops"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/netops"
+	"github.com/shahriarhaqueabir/Winops/internal/sysops"
 )
 
 // DiscoverEnvironment gathers comprehensive information about the host environment.

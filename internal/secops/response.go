@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // AutoExpireWG tracks background goroutines for auto-expire isolation.

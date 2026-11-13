@@ -1,10 +1,10 @@
 # Usage Guide
 
-This guide covers the high-level workflow for UniversalOps. Screenshots referenced here can be placed in `docs/assets/`.
+This guide covers the high-level workflow for Winops. Screenshots referenced here can be placed in `docs/assets/`.
 
 ## First Launch
 
-1. Launch `UniversalOps.exe` as Administrator for full remediation capabilities.
+1. Launch `Winops.exe` as Administrator for full remediation capabilities.
 2. The Dashboard loads a live snapshot of your system (CPU, memory, disk, network, alerts).
 3. If you plan to use the AI Assistant, ensure [Ollama](https://ollama.com) is running locally.
 
@@ -34,7 +34,7 @@ This guide covers the high-level workflow for UniversalOps. Screenshots referenc
 
 ### AIOps
 - **Chat**: Ask grounded questions about your system; the assistant can incorporate live context.
-- **Persona/Models**: Create or switch models/personas. With Ollama, you can pull models and build a custom `universalops` persona.
+- **Persona/Models**: Create or switch models/personas. With Ollama, you can pull models and build a custom `winops` persona.
 - **Reports**: Generate AI-assisted operational reports from captured data.
 
 ## Tips & Safety

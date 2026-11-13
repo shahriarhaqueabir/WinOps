@@ -302,22 +302,22 @@ export function AIOps() {
 
   const ollamaStatus: OllamaStatus = ollamaStatusData ?? { available: false, binary_exists: false, model: '', version: '' }
 
-  // Check if the universalops persona model exists in the available models list
-  const universalopsModel = ollamaStatus.available_models?.find(m => m.startsWith('universalops'))
-  const universalopsExistsInOllama = !!universalopsModel
-  const isPersonaMissing = ollamaStatus.available && !ollamaStatus.model.startsWith('universalops')
-  const canJustSwitch = isPersonaMissing && universalopsExistsInOllama
+  // Check if the winops persona model exists in the available models list
+  const winopsModel = ollamaStatus.available_models?.find(m => m.startsWith('winops'))
+  const winopsExistsInOllama = !!winopsModel
+  const isPersonaMissing = ollamaStatus.available && !ollamaStatus.model.startsWith('winops')
+  const canJustSwitch = isPersonaMissing && winopsExistsInOllama
 
   const handleInitializePersona = async () => {
     if (initializing) return
     setInitializing(true)
 
-    if (universalopsExistsInOllama && universalopsModel) {
+    if (winopsExistsInOllama && winopsModel) {
       // Model already exists — just switch to it
-      const tid = toast.loading(`Switching to ${universalopsModel}...`)
+      const tid = toast.loading(`Switching to ${winopsModel}...`)
       try {
-        await call('AIOps.SetOllamaModel', universalopsModel)
-        toast.success(`Switched to persona model: ${universalopsModel}`, { id: tid })
+        await call('AIOps.SetOllamaModel', winopsModel)
+        toast.success(`Switched to persona model: ${winopsModel}`, { id: tid })
         queryClient.invalidateQueries({ queryKey: ['ollama-status'] })
       } catch (err: any) {
         toast.error(`Failed to switch: ${err.message}`, { id: tid })
@@ -375,8 +375,8 @@ export function AIOps() {
                   : "bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20"
               )}
               title={canJustSwitch
-                ? `Switch to the existing ${universalopsModel} persona model`
-                : 'Create the universalops model from the modelfile in data/ directory'}
+                ? `Switch to the existing ${winopsModel} persona model`
+                : 'Create the winops model from the modelfile in data/ directory'}
             >
               {initializing ? <RefreshCw size={14} className="animate-spin" /> : <Bot size={14} />}
               {canJustSwitch ? 'Switch to Persona' : 'Initialize Persona'}
@@ -409,7 +409,7 @@ export function AIOps() {
                 <div className="max-h-64 overflow-y-auto space-y-1">
                   {ollamaStatus.available_models?.map(m => {
                     const isCurrent = m === ollamaStatus.model
-                    const isPersonaModel = m.startsWith('universalops')
+                    const isPersonaModel = m.startsWith('winops')
                     return (
                       <button
                         key={m}
@@ -784,11 +784,11 @@ function ChatTab() {
         if (!cancelled && msgs && msgs.length > 0) {
           setMessages(msgs)
         } else if (!cancelled) {
-          setMessages([{ role: 'assistant', content: 'Greetings. I am the UniversalOps AI Analyst. I have analyzed your system metrics and identified several areas for potential optimization. How can I assist you today?' }])
+          setMessages([{ role: 'assistant', content: 'Greetings. I am the Winops AI Analyst. I have analyzed your system metrics and identified several areas for potential optimization. How can I assist you today?' }])
         }
       } catch { /* ignore */
         if (!cancelled) {
-          setMessages([{ role: 'assistant', content: 'Greetings. I am the UniversalOps AI Analyst. I have analyzed your system metrics and identified several areas for potential optimization. How can I assist you today?' }])
+          setMessages([{ role: 'assistant', content: 'Greetings. I am the Winops AI Analyst. I have analyzed your system metrics and identified several areas for potential optimization. How can I assist you today?' }])
         }
       } finally {
         if (!cancelled) setLoaded(true)

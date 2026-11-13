@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // dotNetDateRe matches .NET JSON date format: /Date(1704067200000)/

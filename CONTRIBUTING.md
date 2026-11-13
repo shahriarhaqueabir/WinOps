@@ -1,4 +1,4 @@
-# Contributing to UniversalOps
+# Contributing to Winops
 
 Thanks for your interest in contributing!
 
@@ -11,7 +11,7 @@ Thanks for your interest in contributing!
 ## Development Setup
 
 1. Install prerequisites: Go 1.26+, Node 20+, Wails CLI v2, WebView2.
-2. Clone the repo: `git clone https://github.com/shahriarhaqueabir/UniversalOps.git`
+2. Clone the repo: `git clone https://github.com/shahriarhaqueabir/Winops.git`
 3. Run dev: `wails dev`
 4. Build: `wails build`
 

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "universalops-config-schema",
-  "title": "UniversalOps Configuration Schema",
+  "$id": "winops-config-schema",
+  "title": "Winops Configuration Schema",
   "description": "Validates staged config changes in useConfigStore before deployment.",
   "type": "object",
   "properties": {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // Win32_VideoController represents a WMI GPU entry.

@@ -7,8 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
-	"github.com/shahriarhaqueabir/UniversalOps/internal/sysops"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/sysops"
 )
 
 // safeFloat guards against NaN and Inf values that would break JSON serialization

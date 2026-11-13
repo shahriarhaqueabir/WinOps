@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // ── AppInfo ──────────────────────────────────────────────────────────────────

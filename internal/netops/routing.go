@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // RouteEntry holds a single routing table entry.

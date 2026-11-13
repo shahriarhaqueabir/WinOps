@@ -1,23 +1,23 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "UniversalOps",
-  "outputfilename": "UniversalOps",
-  "frontend:dir": "cmd/opsforall-gui/frontend",
+  "name": "Winops",
+  "outputfilename": "Winops",
+  "frontend:dir": "cmd/winops-gui/frontend",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "http://127.0.0.1:5173",
   "info": {
-    "productName": "UniversalOps Operations Platform",
+    "productName": "Winops Operations Platform",
     "productVersion": "1.6.4",
-    "copyright": "Copyright 2026 UniversalOps",
+    "copyright": "Copyright 2026 Winops",
     "comments": "High-Performance Technical Operations Intelligence"
   },
   "nsis": {
     "custom": ""
   },
   "author": {
-    "name": "UniversalOps",
-    "email": "noreply@universalops.invalid"
+    "name": "Winops",
+    "email": "noreply@winops.invalid"
   }
 }

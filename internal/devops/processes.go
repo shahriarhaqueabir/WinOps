@@ -5,7 +5,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 	"github.com/shirou/gopsutil/v4/process"
 )
 

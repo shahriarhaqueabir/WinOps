@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // Logs exposes log management bindings to the frontend.
@@ -15,7 +15,7 @@ func NewLogs() *Logs {
 	return &Logs{}
 }
 
-// GetLogs returns filtered log entries from the UniversalOps database.
+// GetLogs returns filtered log entries from the Winops database.
 func (l *Logs) GetLogs(level string, since string, n int) []LogEntry {
 	defer common.RecoverPanic()
 	if n <= 0 {

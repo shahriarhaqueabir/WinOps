@@ -167,7 +167,7 @@ export function ReviewModal({ isOpen, onOpenChange }: ReviewModalProps) {
                 </pre>
               </div>
               <p className="mt-2 text-[9px] text-[var(--color-text-dim)] italic">
-                * Deployment will trigger a rebuild of the 'universalops' model in Ollama.
+                * Deployment will trigger a rebuild of the 'winops' model in Ollama.
               </p>
             </div>
           )}

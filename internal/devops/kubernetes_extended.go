@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 type K8sResourceItem struct {

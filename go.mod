@@ -1,4 +1,4 @@
-module github.com/shahriarhaqueabir/UniversalOps
+module github.com/shahriarhaqueabir/Winops
 
 go 1.26.0
 

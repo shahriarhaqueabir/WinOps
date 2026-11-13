@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // HardeningCheck holds a single hardening check result.

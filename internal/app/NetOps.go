@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
-	"github.com/shahriarhaqueabir/UniversalOps/internal/netops"
-	"github.com/shahriarhaqueabir/UniversalOps/internal/secops"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/netops"
+	"github.com/shahriarhaqueabir/Winops/internal/secops"
 )
 
 // NetOps exposes network operations bindings to the frontend.

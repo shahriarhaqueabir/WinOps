@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 	"golang.org/x/sync/semaphore"
 )
 

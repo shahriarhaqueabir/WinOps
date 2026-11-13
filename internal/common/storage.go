@@ -85,7 +85,7 @@ type MetricQueueStats struct {
 
 var (
 	// DefaultDBName is the name of the SQLite database file.
-	DefaultDBName = "universalops.db"
+	DefaultDBName = "winops.db"
 
 	// globalStorageMu serialises access to globalStorage so that
 	// InitStorage (writer) and GetStorage (readers) never race.

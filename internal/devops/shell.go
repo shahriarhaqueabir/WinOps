@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // ansiRegexp matches CSI ANSI escape sequences (ESC[...m) used for
@@ -387,7 +387,7 @@ var PowerShellProfilePath = func() string {
 	// 2. CWD-relative (dev mode: `wails dev` sets CWD to project root)
 	if cwd, err := os.Getwd(); err == nil {
 		candidates = append(candidates, filepath.Join(cwd, "profiles", "powershell_profile.ps1"))
-		// 3. Grandparent of CWD (dev mode when CWD is deep, e.g. cmd/opsforall-gui)
+		// 3. Grandparent of CWD (dev mode when CWD is deep, e.g. cmd/winops-gui)
 		candidates = append(candidates, filepath.Join(filepath.Dir(cwd), "profiles", "powershell_profile.ps1"))
 		candidates = append(candidates, filepath.Join(filepath.Dir(filepath.Dir(cwd)), "profiles", "powershell_profile.ps1"))
 	}

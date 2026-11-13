@@ -20,10 +20,10 @@ import (
 
 	"github.com/shirou/gopsutil/v4/mem"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/aiops"
-	"github.com/shahriarhaqueabir/UniversalOps/internal/aiops/mcp"
+	"github.com/shahriarhaqueabir/Winops/internal/aiops"
+	"github.com/shahriarhaqueabir/Winops/internal/aiops/mcp"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // titleCaser replaces the deprecated strings.Title (removed guidance since
@@ -998,18 +998,18 @@ func (a *AIOps) GetOllamaStatus() OllamaStatus {
 	}
 }
 
-// GetModelfile reads the local universalops.modelfile and returns its content.
+// GetModelfile reads the local winops.modelfile and returns its content.
 func (a *AIOps) GetModelfile() (string, error) {
 	defer common.RecoverPanic()
-	path := filepath.Join(a.dataDir, "universalops.modelfile")
+	path := filepath.Join(a.dataDir, "winops.modelfile")
 	content, err := os.ReadFile(path) // #nosec G304 -- fixed modelfile in app data dir
 	if err != nil {
-		return "", fmt.Errorf("failed to read universalops.modelfile: %w", err)
+		return "", fmt.Errorf("failed to read winops.modelfile: %w", err)
 	}
 	return string(content), nil
 }
 
-// SaveModelfile writes the given content to the local universalops.modelfile.
+// SaveModelfile writes the given content to the local winops.modelfile.
 func (a *AIOps) SaveModelfile(content string) error {
 	defer common.RecoverPanic()
 	if len(content) > 1<<20 {
@@ -1018,11 +1018,11 @@ func (a *AIOps) SaveModelfile(content string) error {
 	if strings.ContainsRune(content, 0) {
 		return fmt.Errorf("modelfile content contains invalid characters")
 	}
-	common.LogInfo("AIOps: Saving updated universalops.modelfile")
-	path := filepath.Join(a.dataDir, "universalops.modelfile")
+	common.LogInfo("AIOps: Saving updated winops.modelfile")
+	path := filepath.Join(a.dataDir, "winops.modelfile")
 	err := os.WriteFile(path, []byte(content), 0600)
 	if err != nil {
-		return fmt.Errorf("failed to save universalops.modelfile: %w", err)
+		return fmt.Errorf("failed to save winops.modelfile: %w", err)
 	}
 	return nil
 }
@@ -1107,10 +1107,10 @@ const (
 	qwen3_0_6B_Label = "Qwen3-0.6B"
 )
 
-// analystSystemPrompt is the shared system prompt for the UniversalOps
+// analystSystemPrompt is the shared system prompt for the Winops
 // System Analyst persona. Both SetupOllamaPersona and CreateOpsPersona
 // reference this constant so the prompt text cannot drift between code paths.
-const analystSystemPrompt = `You are the UniversalOps System Analyst, a high-density technical co-pilot.
+const analystSystemPrompt = `You are the Winops System Analyst, a high-density technical co-pilot.
 Objective: Synthesize complex telemetry into factual technical briefings.
 
 ### Operational Protocol
@@ -1211,7 +1211,7 @@ func (a *AIOps) GetAISetupRecommendation() AISetupRecommendation {
 
 // SetupOllamaPersona drives the full AI setup flow for the onboarding wizard.
 // It accepts a base model (from GetAISetupRecommendation), pulls it if missing,
-// creates the "universalops" persona in Ollama, persists the model setting,
+// creates the "winops" persona in Ollama, persists the model setting,
 // and runs a quick connection test.
 func (a *AIOps) SetupOllamaPersona(baseModel string) error {
 	defer common.RecoverPanic()
@@ -1245,23 +1245,23 @@ func (a *AIOps) SetupOllamaPersona(baseModel string) error {
 		baseModel = localModelPath
 	}
 
-	// 1. Single CheckOllamaWithContext call — checks for universalops persona + base model
+	// 1. Single CheckOllamaWithContext call — checks for winops persona + base model
 	common.LogInfo("AIOps: Checking Ollama status for persona setup (base: %s)", baseModel)
-	universalopsExists := false
+	winopsExists := false
 
 	if status, err := a.provider.CheckStatus(a.requestContext()); err == nil && status.Available {
 		for _, m := range status.AvailableModels {
-			if m == "universalops" || strings.HasPrefix(m, "universalops:") {
-				universalopsExists = true
+			if m == "winops" || strings.HasPrefix(m, "winops:") {
+				winopsExists = true
 			}
 		}
 	}
 
-	// If universalops already exists, activate and test
-	if universalopsExists {
-		common.LogInfo("AIOps: universalops already exists — activating")
-		a.provider.SetModel("universalops")
-		a.SetModelForCapability("analyst", "universalops")
+	// If winops already exists, activate and test
+	if winopsExists {
+		common.LogInfo("AIOps: winops already exists — activating")
+		a.provider.SetModel("winops")
+		a.SetModelForCapability("analyst", "winops")
 		return a.testPersonaConnection()
 	}
 
@@ -1295,14 +1295,14 @@ func (a *AIOps) SetupOllamaPersona(baseModel string) error {
 	}
 
 	// 3. Write a correct modelfile to data/ for transparency and later editing
-	modelfilePath := filepath.Join(a.dataDir, "universalops.modelfile")
+	modelfilePath := filepath.Join(a.dataDir, "winops.modelfile")
 	fromValue := baseModel
 	if strings.ContainsAny(fromValue, " \t") {
 		fromValue = `"` + fromValue + `"`
 	}
 	modelfileContent := fmt.Sprintf(`FROM %s
 
-# System message for UniversalOps System Analyst
+# System message for Winops System Analyst
 SYSTEM """
 %s
 """
@@ -1319,8 +1319,8 @@ PARAMETER stop "──"
 		common.LogWarn("AIOps: failed to write modelfile: %v", err)
 	}
 
-	// 4. Create the universalops persona via the Ollama SDK
-	common.LogInfo("AIOps: Creating universalops model from %s", baseModel)
+	// 4. Create the winops persona via the Ollama SDK
+	common.LogInfo("AIOps: Creating winops model from %s", baseModel)
 
 	params := map[string]any{
 		"temperature": 0.1,
@@ -1331,15 +1331,15 @@ PARAMETER stop "──"
 	// Use a lifecycle-independent context (matching PullModel) so a window/app
 	// shutdown mid-create cannot abort a multi-GiB base-model download. The
 	// operation is still bounded by the long-running client's 45-minute timeout.
-	if err := a.provider.CreateModel(context.Background(), "universalops", baseModel, analystSystemPrompt, params, a.emitModelProgress); err != nil {
+	if err := a.provider.CreateModel(context.Background(), "winops", baseModel, analystSystemPrompt, params, a.emitModelProgress); err != nil {
 		return fmt.Errorf("persona creation failed for base %s: %w", baseModel, err)
 	}
 
 	// 5. Persist the model setting so future sessions remember it
-	a.SetModelForCapability("analyst", "universalops")
+	a.SetModelForCapability("analyst", "winops")
 
 	// 6. Activate
-	a.provider.SetModel("universalops")
+	a.provider.SetModel("winops")
 
 	// 7. Quick sanity check — can the model respond?
 	if err := a.testPersonaConnection(); err != nil {
@@ -1376,7 +1376,7 @@ func (a *AIOps) UseExistingModel(modelPath string) error {
 func (a *AIOps) testPersonaConnection() error {
 	resp, err := a.provider.Chat(a.ctx, []aiops.ChatMessage{
 		{Role: "user", Content: "Respond with exactly: OK"},
-	}, "universalops")
+	}, "winops")
 	if err != nil {
 		return fmt.Errorf("persona connection test failed — Ollama may be overloaded or the model incompatible: %w", err)
 	}
@@ -1387,24 +1387,24 @@ func (a *AIOps) testPersonaConnection() error {
 	return nil
 }
 
-// CreateOpsPersona creates or activates the specialized 'universalops' model from the local modelfile.
+// CreateOpsPersona creates or activates the specialized 'winops' model from the local modelfile.
 // If the model already exists in Ollama, it simply activates it without re-creating.
 func (a *AIOps) CreateOpsPersona() error {
 	defer common.RecoverPanic()
-	common.LogInfo("AIOps: Creating/activating universalops persona")
+	common.LogInfo("AIOps: Creating/activating winops persona")
 
 	// 0. Check if the model already exists in Ollama — just activate it
 	if status, err := a.provider.CheckStatus(a.requestContext()); err == nil && status.Available {
 		for _, m := range status.AvailableModels {
-			if strings.HasPrefix(m, "universalops") || strings.HasPrefix(m, "universalops:") {
-				common.LogInfo("AIOps: universalops model already exists (%s). Activating it.", m)
+			if strings.HasPrefix(m, "winops") || strings.HasPrefix(m, "winops:") {
+				common.LogInfo("AIOps: winops model already exists (%s). Activating it.", m)
 				a.provider.SetModel(m)
 				return nil
 			}
 		}
 	}
 
-	modelfilePath := filepath.Join(a.dataDir, "universalops.modelfile")
+	modelfilePath := filepath.Join(a.dataDir, "winops.modelfile")
 
 	// 1. Check for legacy root Modelfile and migrate if necessary
 	legacyPaths := []string{"Modelfile", filepath.Join("data", "Modelfile")}
@@ -1417,12 +1417,12 @@ func (a *AIOps) CreateOpsPersona() error {
 		}
 	}
 
-	// 2. Ensure universalops.modelfile exists in data/
+	// 2. Ensure winops.modelfile exists in data/
 	if _, err := os.Stat(modelfilePath); os.IsNotExist(err) {
-		common.LogInfo("AIOps: universalops.modelfile missing in data/. Creating default (Qwythos-9B).")
+		common.LogInfo("AIOps: winops.modelfile missing in data/. Creating default (Qwythos-9B).")
 		content := fmt.Sprintf(`FROM %s
 
-# System message for UniversalOps System Analyst
+# System message for Winops System Analyst
 SYSTEM """
 %s
 """
@@ -1459,14 +1459,14 @@ PARAMETER stop "──"
 	}
 
 	// 4. Create Model via SDK
-	common.LogInfo("AIOps: Requesting model creation for 'universalops' (Base: %s)", config.From)
+	common.LogInfo("AIOps: Requesting model creation for 'winops' (Base: %s)", config.From)
 
 	// Note: Ollama's Create API handles pulling the base model automatically
 	// in recent versions if it's missing from the library.
 	// Use a lifecycle-independent context (matching PullModel) so a window/app
 	// shutdown mid-create cannot abort a multi-GiB base-model download. The
 	// operation is still bounded by the long-running client's 45-minute timeout.
-	err = a.provider.CreateModel(context.Background(), "universalops", config.From, config.System, config.Parameters, a.emitModelProgress)
+	err = a.provider.CreateModel(context.Background(), "winops", config.From, config.System, config.Parameters, a.emitModelProgress)
 	if err != nil {
 		// If creation fails because base is missing, attempt an explicit pull
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "pull") {
@@ -1478,7 +1478,7 @@ PARAMETER stop "──"
 				return fmt.Errorf("failed to pull base model %s: %w", config.From, pErr)
 			}
 			// Retry creation after successful pull
-			err = a.provider.CreateModel(context.Background(), "universalops", config.From, config.System, config.Parameters, a.emitModelProgress)
+			err = a.provider.CreateModel(context.Background(), "winops", config.From, config.System, config.Parameters, a.emitModelProgress)
 		}
 	}
 
@@ -1488,8 +1488,8 @@ PARAMETER stop "──"
 	}
 
 	// 5. Activate the newly-created model
-	a.provider.SetModel("universalops")
-	common.LogInfo("AIOps: Successfully created and activated universalops persona")
+	a.provider.SetModel("winops")
+	common.LogInfo("AIOps: Successfully created and activated winops persona")
 	return nil
 }
 
@@ -1517,7 +1517,7 @@ func (a *AIOps) DetectAnomalies() []AnomalyInfo {
 func (a *AIOps) AskAI(ctx context.Context, prompt string) (string, error) {
 	defer common.RecoverPanic()
 	messages := []aiops.ChatMessage{
-		{Role: "system", Content: "You are the UniversalOps AI assistant, an expert operations analyst. Be concise and specific."},
+		{Role: "system", Content: "You are the Winops AI assistant, an expert operations analyst. Be concise and specific."},
 		{Role: "user", Content: prompt},
 	}
 	return a.provider.Chat(ctx, messages, "")
@@ -1863,7 +1863,7 @@ If no changes are needed, return the current settings in the payload.`,
 
 	optStart := time.Now()
 	resp, err := a.provider.Chat(optCtx, []aiops.ChatMessage{
-		{Role: "system", Content: "You are the UniversalOps Engine Optimizer. Output JSON only."},
+		{Role: "system", Content: "You are the Winops Engine Optimizer. Output JSON only."},
 		{Role: "user", Content: prompt},
 	}, a.OptimizerModel)
 	optElapsed := time.Since(optStart)
@@ -1970,7 +1970,7 @@ Keep it technical and focused on system/network/security ops.`, objective)
 
 	// Use OptimizerModel for structured planning if available
 	resp, err := a.provider.Chat(a.ctx, []aiops.ChatMessage{
-		{Role: "system", Content: "You are the UniversalOps Workflow Architect. Output JSON only."},
+		{Role: "system", Content: "You are the Winops Workflow Architect. Output JSON only."},
 		{Role: "user", Content: prompt},
 	}, a.OptimizerModel)
 

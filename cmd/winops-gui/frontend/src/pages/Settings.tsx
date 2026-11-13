@@ -220,7 +220,7 @@ interface AppInfo {
 }
 
 const DEFAULT_APP_INFO: AppInfo = {
-  name: 'UniversalOps',
+  name: 'Winops',
   version: '1.6.4',
   go_version: 'go1.26.5',
   uptime: '--',
@@ -460,10 +460,10 @@ export function Settings() {
                 </div>
               </div>
               <div className="pt-6 border-t border-[var(--color-border)]/50 mt-6 flex gap-6">
-                <a href="https://github.com/shahriarhaqueabir/UniversalOps" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-[var(--color-accent)] hover:opacity-80 transition-colors">
+                <a href="https://github.com/shahriarhaqueabir/Winops" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-[var(--color-accent)] hover:opacity-80 transition-colors">
                   <ExternalLink size={14} /> SOURCE CODE
                 </a>
-                <a href="https://github.com/shahriarhaqueabir/UniversalOps#readme" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-[var(--color-accent)] hover:opacity-80 transition-colors">
+                <a href="https://github.com/shahriarhaqueabir/Winops#readme" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-[var(--color-accent)] hover:opacity-80 transition-colors">
                   <ExternalLink size={14} /> DOCUMENTATION
                 </a>
               </div>
@@ -495,7 +495,7 @@ export function Settings() {
                 <div className="flex items-center justify-between p-5 rounded-xl bg-[var(--color-panel-2)] border border-[var(--color-border)]">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-[var(--color-text)]">Active Modelfile</p>
-                    <p className="text-xs text-accent mt-1 font-mono truncate">{dataDir}/universalops.modelfile</p>
+                    <p className="text-xs text-accent mt-1 font-mono truncate">{dataDir}/winops.modelfile</p>
                   </div>
                   <button
                     onClick={handlePickModelfile}
@@ -792,7 +792,7 @@ export function Settings() {
                 <div className="flex items-center justify-between p-5 rounded-xl bg-[var(--color-panel-2)] border border-[var(--color-border)]">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-[var(--color-text)]">Telemetry Core</p>
-                    <p className="text-xs text-accent mt-1 font-mono truncate">{dataDir}/universalops.db</p>
+                    <p className="text-xs text-accent mt-1 font-mono truncate">{dataDir}/winops.db</p>
                   </div>
                   <button
                     onClick={handleRelocateData}
@@ -805,7 +805,7 @@ export function Settings() {
                 <div className="flex items-center justify-between p-5 rounded-xl bg-[var(--color-panel-2)] border border-[var(--color-border)]">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-[var(--color-text)]">Diagnostic Logs</p>
-                    <p className="text-xs text-accent mt-1 font-mono truncate">{logsDir}/universalops.log</p>
+                    <p className="text-xs text-accent mt-1 font-mono truncate">{logsDir}/winops.log</p>
                   </div>
                   <button
                     onClick={handleRelocateLogs}

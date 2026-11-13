@@ -81,7 +81,7 @@ func (m *multiHandler) WithGroup(name string) slog.Handler {
 // InitLogger initializes the session logger locally.
 func InitLogger(filename string) error {
 	if filename == "" {
-		filename = filepath.Join("logs", "universalops.log")
+		filename = filepath.Join("logs", "winops.log")
 	}
 
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600) // #nosec G304,G302 -- caller-selected log path, restricted permissions
@@ -111,7 +111,7 @@ func InitLogger(filename string) error {
 		handlers: []slog.Handler{consoleHandler, fileHandler},
 	}
 
-	newLogger := slog.New(handler).With("app", "universalops")
+	newLogger := slog.New(handler).With("app", "winops")
 
 	loggerMu.Lock()
 	if logFile != nil && logFile != f {

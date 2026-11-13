@@ -6,4 +6,4 @@ package common
 const Version = "1.6.4"
 
 // AppName is the formal name of the application.
-const AppName = "UniversalOps"
+const AppName = "Winops"

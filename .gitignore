@@ -14,7 +14,7 @@ build/bin/
 
 # Wails auto-generated bindings (regenerated on wails dev/build)
 wailsjs/
-cmd/opsforall-gui/frontend/wailsjs/
+cmd/winops-gui/frontend/wailsjs/
 
 # IDE
 .idea/
@@ -25,16 +25,16 @@ cmd/opsforall-gui/frontend/wailsjs/
 
 # Logs
 *.log
-opsforall-gui.log
+winops-gui.log
 
 # Database
-opsforall.db
-opsforall.db-shm
+winops.db
+winops.db-shm
 *.db
 *.db-shm
 *.db-wal
-universalops.db-wal
-universalops.db-shm
+winops.db-wal
+winops.db-shm
 
 # Dependencies
 node_modules/
@@ -59,7 +59,7 @@ coverage_devops
 coverage_secops
 coverage_sysops
 test_cov
-cmd/opsforall-gui/nul
+cmd/winops-gui/nul
 nul
 test.err
 vet.err
@@ -84,10 +84,10 @@ models.json
 .qodo/
 
 # Backup directories
-cmd/opsforall-gui.bak/
+cmd/winops-gui.bak/
 
 # Build artifacts
-cmd/opsforall-gui/frontend/src/assets/
+cmd/winops-gui/frontend/src/assets/
 
 # Runtime data
 data/lhm/
@@ -125,6 +125,9 @@ data/models/
 # NOTE: scripts/package-scoop.ps1 and scripts/package-homebrew.ps1 are intentionally
 # NOT ignored — release.yml's publish job invokes package-scoop.ps1 in CI, so it must
 # exist in the checkout. package-homebrew.ps1 is kept tracked for manual macOS releases.
+
+# Playbook (teaching material, kept local)
+docs/playbook*.md
 
 # Internal / research docs (not user-facing)
 docs/MustHaves.md

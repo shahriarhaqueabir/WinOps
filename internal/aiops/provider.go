@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // AIProvider abstracts a local LLM backend (Ollama or llama.cpp).

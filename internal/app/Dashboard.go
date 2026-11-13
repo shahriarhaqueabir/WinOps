@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // Dashboard exposes dashboard-related bindings to the frontend.

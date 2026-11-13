@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // ScheduledTask represents a scheduled task.

@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
 )
 
 // ARPEntry holds a single ARP cache entry.

@@ -14,9 +14,9 @@ import (
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
-	"github.com/shahriarhaqueabir/UniversalOps/internal/devops"
-	sysopsPkg "github.com/shahriarhaqueabir/UniversalOps/internal/sysops"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/Winops/internal/devops"
+	sysopsPkg "github.com/shahriarhaqueabir/Winops/internal/sysops"
 )
 
 // DevOps exposes development operations bindings to the frontend.

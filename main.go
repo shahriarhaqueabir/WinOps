@@ -11,10 +11,10 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/app"
+	"github.com/shahriarhaqueabir/Winops/internal/app"
 )
 
-//go:embed all:cmd/opsforall-gui/frontend/dist
+//go:embed all:cmd/winops-gui/frontend/dist
 var assets embed.FS
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	application := app.NewApp()
 
 	err := wails.Run(&options.App{
-		Title:     "UniversalOps Operations Platform",
+		Title:     "Winops Operations Platform",
 		Width:     1400,
 		Height:    900,
 		MinWidth:  1024,

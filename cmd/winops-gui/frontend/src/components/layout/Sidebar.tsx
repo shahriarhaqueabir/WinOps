@@ -28,7 +28,7 @@ interface NavItem {
   shortcut?: number
 }
 
-const SIDEBAR_COLLAPSED_KEY = 'universalops_sidebarCollapsed'
+const SIDEBAR_COLLAPSED_KEY = 'winops_sidebarCollapsed'
 
 const opsItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} />, shortcut: 1 },
@@ -242,7 +242,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
 
       {/* Footer */}
       <div className="px-3 pb-4 pt-1 wails-no-drag">
-        <p className="text-[11px] text-[var(--color-text-faint)]">UniversalOps{appVersion ? ` v${appVersion}` : ''}</p>
+        <p className="text-[11px] text-[var(--color-text-faint)]">Winops{appVersion ? ` v${appVersion}` : ''}</p>
       </div>
     </aside>
   )

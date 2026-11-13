@@ -52,7 +52,7 @@ func GetBaseDir() string {
 	if err != nil {
 		return "." // Last resort
 	}
-	return filepath.Join(configDir, "universalops")
+	return filepath.Join(configDir, "winops")
 }
 
 // ConfigDir returns the application data directory path.

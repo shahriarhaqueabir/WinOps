@@ -22,10 +22,10 @@ func checkWindowsPrereqs() {
 	if !webView2Installed() {
 		showFatalError(
 			"WebView2 Runtime Not Found",
-			"UniversalOps requires the Microsoft WebView2 Runtime.\n\n"+
+			"Winops requires the Microsoft WebView2 Runtime.\n\n"+
 				"Download it free from:\n"+
 				"https://go.microsoft.com/fwlink/p/?LinkId=2124703\n\n"+
-				"After installing, restart UniversalOps.",
+				"After installing, restart Winops.",
 		)
 	}
 }

@@ -43,7 +43,7 @@ type OllamaStatus struct {
 
 const (
 	defaultOllamaURL   = "http://127.0.0.1:11434"
-	defaultOllamaModel = "universalops"
+	defaultOllamaModel = "winops"
 	defaultHttpTimeout = 120 * time.Second
 
 	// longRunningHttpTimeout is used for model create/pull operations, which
@@ -246,7 +246,7 @@ func DeleteModelWithContext(ctx context.Context, name string) error {
 // ── OllamaClient Implementation ─────────────────────────────────────────────
 
 // OllamaClient is a minimal Ollama HTTP API client. It intentionally implements
-// only the endpoints UniversalOps uses, avoiding a dependency on Ollama's full
+// only the endpoints Winops uses, avoiding a dependency on Ollama's full
 // server module and its transitive packages.
 type OllamaClient struct {
 	httpClient     *http.Client

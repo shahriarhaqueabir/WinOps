@@ -12,7 +12,7 @@ import (
 func testOllamaClient(t *testing.T, srv *httptest.Server) *OllamaClient {
 	t.Helper()
 	t.Setenv("OLLAMA_HOST", srv.URL)
-	t.Setenv("OLLAMA_MODEL", "universalops")
+	t.Setenv("OLLAMA_MODEL", "winops")
 	return NewOllamaClient()
 }
 
@@ -63,8 +63,8 @@ func TestOllamaChat(t *testing.T) {
 	if out != "hello" {
 		t.Fatalf("Chat = %q, want hello", out)
 	}
-	if got.Model != "universalops" || got.Stream {
-		t.Errorf("request model/stream = %q/%v, want universalops/false", got.Model, got.Stream)
+	if got.Model != "winops" || got.Stream {
+		t.Errorf("request model/stream = %q/%v, want winops/false", got.Model, got.Stream)
 	}
 	if len(got.Messages) != 1 || got.Messages[0].Content != "hi" {
 		t.Errorf("request messages = %#v", got.Messages)
@@ -195,7 +195,7 @@ func TestOllamaCheckStatus(t *testing.T) {
 				Name string `json:"name"`
 			}{
 				{Name: "qwen2.5:7b"},
-				{Name: "universalops:latest"},
+				{Name: "winops:latest"},
 			}})
 		case "/api/version":
 			_ = json.NewEncoder(w).Encode(ollamaVersionResponse{Version: "0.40.11"})
@@ -213,8 +213,8 @@ func TestOllamaCheckStatus(t *testing.T) {
 	if !status.Available || status.Version != "0.40.11" {
 		t.Fatalf("status = %#v", status)
 	}
-	if status.Model != "universalops:latest" {
-		t.Errorf("model = %q, want universalops:latest", status.Model)
+	if status.Model != "winops:latest" {
+		t.Errorf("model = %q, want winops:latest", status.Model)
 	}
 	if len(status.AvailableModels) != 2 {
 		t.Errorf("models = %#v", status.AvailableModels)

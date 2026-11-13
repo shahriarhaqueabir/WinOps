@@ -19,9 +19,9 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"github.com/shahriarhaqueabir/UniversalOps/internal/aiops"
-	"github.com/shahriarhaqueabir/UniversalOps/internal/common"
-	sysopsPkg "github.com/shahriarhaqueabir/UniversalOps/internal/sysops"
+	"github.com/shahriarhaqueabir/Winops/internal/aiops"
+	"github.com/shahriarhaqueabir/Winops/internal/common"
+	sysopsPkg "github.com/shahriarhaqueabir/Winops/internal/sysops"
 )
 
 // App is the main application struct bound to the Wails frontend.
@@ -281,7 +281,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.DevOps.ctx = ctx
 
 	// Initialize persistent storage locally
-	dbPath := filepath.Join(dataDir, "universalops.db")
+	dbPath := filepath.Join(dataDir, "winops.db")
 	if err := common.InitStorage(dbPath); err != nil {
 		common.LogWarn("Failed to init local storage: %v", err)
 	}
@@ -310,7 +310,7 @@ func (a *App) Startup(ctx context.Context) {
 	}
 
 	// Initialize the session logger locally
-	logPath := filepath.Join(logsDir, "universalops.log")
+	logPath := filepath.Join(logsDir, "winops.log")
 	if err := common.InitLogger(logPath); err != nil {
 		common.LogWarn("Failed to init local logger: %v", err)
 	}
@@ -331,7 +331,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.PipelineAPI.LoadSettings()
 	a.AIOps.LoadModels()
 
-	common.LogInfo("UniversalOps initialized in self-contained mode (portable)")
+	common.LogInfo("Winops initialized in self-contained mode (portable)")
 
 	// Initialize System Knowledge Layer (linked to Pipeline for consistency)
 	common.InitKnowledge(a.pipeline)
@@ -363,7 +363,7 @@ func (a *App) Startup(ctx context.Context) {
 
 // Shutdown is called by Wails when the application shuts down.
 func (a *App) Shutdown(ctx context.Context) {
-	common.LogInfo("UniversalOps shutting down")
+	common.LogInfo("Winops shutting down")
 
 	// 1. Terminate any active child processes (zombie prevention)
 	common.CleanupActiveProcesses()
@@ -677,9 +677,9 @@ func (a *App) UpdateStorageConfig(dbDir string) error {
 	}
 	os.Remove(testFile)
 
-	dbPath := filepath.Join(dbDir, "universalops.db")
+	dbPath := filepath.Join(dbDir, "winops.db")
 	oldDataDir := a.currentDataDir
-	oldDBPath := filepath.Join(oldDataDir, "universalops.db")
+	oldDBPath := filepath.Join(oldDataDir, "winops.db")
 	hadScheduler := a.scheduler != nil
 
 	restartScheduler := func() {
@@ -737,7 +737,7 @@ func (a *App) GetLogsDir() string {
 
 // UpdateLogsConfig relocates the active log file.
 func (a *App) UpdateLogsConfig(logDir string) error {
-	logPath := filepath.Join(logDir, "universalops.log")
+	logPath := filepath.Join(logDir, "winops.log")
 	common.LogInfo("App: Relocating log file to %s", logPath)
 
 	common.CloseLogger()
@@ -1304,7 +1304,7 @@ func validateOllamaEnv() {
 	}
 	model := os.Getenv("OLLAMA_MODEL")
 	if model == "" {
-		common.LogInfo("OLLAMA_MODEL not set, defaulting to universalops")
+		common.LogInfo("OLLAMA_MODEL not set, defaulting to winops")
 	} else {
 		common.LogInfo("OLLAMA_MODEL=%s", model)
 	}

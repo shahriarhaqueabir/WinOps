@@ -29,35 +29,35 @@ function saveSetting<T>(key: string, value: T): void {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  refreshInterval: loadSetting('universalops_refreshInterval', 5000),
-  pingCount: loadSetting('universalops_pingCount', 4),
-  dnsTimeout: loadSetting('universalops_dnsTimeout', 2000),
-  companionName: loadSetting('universalops_companionName', 'Hawk'),
-  autoEcoMode: loadSetting('universalops_autoEcoMode', true),
+  refreshInterval: loadSetting('winops_refreshInterval', 5000),
+  pingCount: loadSetting('winops_pingCount', 4),
+  dnsTimeout: loadSetting('winops_dnsTimeout', 2000),
+  companionName: loadSetting('winops_companionName', 'Hawk'),
+  autoEcoMode: loadSetting('winops_autoEcoMode', true),
 
   setRefreshInterval: (val) => {
-    saveSetting('universalops_refreshInterval', val)
+    saveSetting('winops_refreshInterval', val)
     set({ refreshInterval: val })
   },
   setPingCount: (val) => {
-    saveSetting('universalops_pingCount', val)
+    saveSetting('winops_pingCount', val)
     set({ pingCount: val })
   },
   setDnsTimeout: (val) => {
-    saveSetting('universalops_dnsTimeout', val)
+    saveSetting('winops_dnsTimeout', val)
     set({ dnsTimeout: val })
   },
   setCompanionName: (name) => {
-    saveSetting('universalops_companionName', name)
+    saveSetting('winops_companionName', name)
     set({ companionName: name })
   },
   setAutoEcoMode: (val) => {
-    saveSetting('universalops_autoEcoMode', val)
+    saveSetting('winops_autoEcoMode', val)
     set({ autoEcoMode: val })
   },
   setBatch: (changes) => {
     Object.entries(changes).forEach(([key, value]) => {
-      saveSetting(`universalops_${key}`, value)
+      saveSetting(`winops_${key}`, value)
     })
     set((state) => ({ ...state, ...changes }))
   },
@@ -133,7 +133,7 @@ interface ThemeState {
   setTheme: (t: Theme) => void
 }
 
-const THEME_KEY = 'universalops-theme'
+const THEME_KEY = 'winops-theme'
 
 export const useThemeStore = create<ThemeState>((set) => ({
   theme: (() => {
