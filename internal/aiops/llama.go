@@ -213,7 +213,16 @@ func (p *LlamaProvider) ListModels(ctx context.Context) ([]string, error) {
 func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress func(ProgressResponse) error) error {
 	// name may be an http(s) URL or a local filename already present.
 	u, err := url.Parse(name)
-	if err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
+	// SECURITY: HTTPS only, validated host
+	if err == nil && u.Scheme == "https" && u.Host != "" {
+		// Host whitelist (HuggingFace + trusted sources)
+		allowedHosts := map[string]bool{
+			"huggingface.co": true, "cdn-lfs.huggingface.co": true,
+			"us.aws.cdn.hf.co": true, "github.com": true,
+		}
+		if !allowedHosts[u.Hostname()] {
+			return fmt.Errorf("host not allowed: %s", u.Hostname())
+		}
 		if err := os.MkdirAll(p.modelsDir(), 0o700); err != nil {
 			return err
 		}
@@ -221,14 +230,25 @@ func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress f
 		if err != nil {
 			return err
 		}
-		client := &http.Client{Timeout: 30 * time.Minute}
-		resp, err := client.Do(req) // #nosec G107 -- validated http(s) URL for a user-requested model download
+		// SECURITY: reject redirects
+		client := &http.Client{
+			Timeout: 30 * time.Minute,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return fmt.Errorf("redirects not allowed")
+			},
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			return err
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("download failed: %s", resp.Status)
+		}
+		// Content-Type validation
+		ct := resp.Header.Get("Content-Type")
+		if strings.Contains(ct, "text/html") || strings.Contains(ct, "text/plain") {
+			return fmt.Errorf("unexpected content type: %s", ct)
 		}
 		const maxModelDownloadBytes = int64(64 << 30)
 		if resp.ContentLength > maxModelDownloadBytes {
@@ -239,22 +259,30 @@ func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress f
 		if filename == "" || filename == "." || filename == ".." || strings.ContainsAny(filename, `/\`) {
 			return fmt.Errorf("invalid model filename")
 		}
+		// SECURITY: only .gguf files
+		if !strings.HasSuffix(strings.ToLower(filename), ".gguf") {
+			return fmt.Errorf("only .gguf files allowed")
+		}
 		dest := filepath.Join(p.modelsDir(), filename)
-		f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- sanitized model filename under models dir
+		tmpDest := dest + ".tmp"
+		f, err := os.OpenFile(tmpDest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 		if err != nil {
 			return err
 		}
-		defer f.Close()
 		buf := make([]byte, 32*1024)
 		var downloaded int64
 		for {
 			n, rerr := resp.Body.Read(buf)
 			if n > 0 {
 				if _, werr := f.Write(buf[:n]); werr != nil {
+					f.Close()
+					os.Remove(tmpDest)
 					return werr
 				}
 				downloaded += int64(n)
 				if downloaded > maxModelDownloadBytes {
+					f.Close()
+					os.Remove(tmpDest)
 					return fmt.Errorf("model download exceeds %d bytes", maxModelDownloadBytes)
 				}
 				if onProgress != nil {
@@ -269,9 +297,30 @@ func (p *LlamaProvider) PullModel(ctx context.Context, name string, onProgress f
 				break
 			}
 			if rerr != nil {
+				f.Close()
+				os.Remove(tmpDest)
 				return rerr
 			}
 		}
+		f.Close()
+		// GGUF magic bytes check
+		gf, err := os.Open(tmpDest)
+		if err == nil {
+			magic := make([]byte, 4)
+			_, _ = gf.Read(magic)
+			gf.Close()
+			if string(magic) != "GGUF" {
+				os.Remove(tmpDest)
+				return fmt.Errorf("downloaded file is not a valid GGUF model")
+			}
+		}
+		// Atomic rename
+		if err := os.Rename(tmpDest, dest); err != nil {
+			os.Remove(tmpDest)
+			return err
+		}
+		// File permission lockdown
+		os.Chmod(dest, 0o600)
 		if onProgress != nil {
 			_ = onProgress(ProgressResponse{Status: "success"})
 		}
