@@ -17,13 +17,13 @@ import (
 // app can get GPU-accelerated inference without requiring the user to start a
 // separate application.
 type LlamaServerManager struct {
-	mu       sync.Mutex
-	cmd      *exec.Cmd
-	pid      int
-	port     string
-	model    string
-	binary   string
-	started  bool
+	mu      sync.Mutex
+	cmd     *exec.Cmd
+	pid     int
+	port    string
+	model   string
+	binary  string
+	started bool
 }
 
 var (
@@ -34,7 +34,7 @@ var (
 // GetLlamaServerManager returns the singleton manager.
 func GetLlamaServerManager() *LlamaServerManager {
 	llamaServerOnce.Do(func() {
-		llamaServerInstance = &LlamaServerManager{port: "8080"}
+		llamaServerInstance = &LlamaServerManager{port: "18020"}
 	})
 	return llamaServerInstance
 }
@@ -144,7 +144,7 @@ func (m *LlamaServerManager) Start() error {
 		return fmt.Errorf("no GGUF model found")
 	}
 	if m.port == "" {
-		m.port = "8080"
+		m.port = "18020"
 	}
 
 	args := []string{
@@ -198,7 +198,7 @@ func (m *LlamaServerManager) Stop() {
 // URL returns the base URL of the managed server.
 func (m *LlamaServerManager) URL() string {
 	if m.port == "" {
-		return "http://127.0.0.1:8080"
+		return "http://127.0.0.1:18020"
 	}
 	return "http://127.0.0.1:" + m.port
 }

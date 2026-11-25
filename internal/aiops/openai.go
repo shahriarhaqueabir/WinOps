@@ -21,7 +21,7 @@ type OpenAIProvider struct {
 	client  *http.Client
 }
 
-const defaultOpenAIBaseURL = "http://127.0.0.1:8080"
+const defaultOpenAIBaseURL = "http://127.0.0.1:18020"
 
 func getOpenAIBaseURL() string {
 	if v := os.Getenv("LLAMA_SERVER_URL"); v != "" {

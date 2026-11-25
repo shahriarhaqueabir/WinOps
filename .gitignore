@@ -140,3 +140,9 @@ docs/reviewprompt.md
 nul
 tests/e2e/__pycache__/
 tests/e2e/.pytest_cache/
+
+# Private modules (secrets, adapters, config - never committed)
+private/
+private/secrets/
+private/adapters/
+private/config/
