@@ -1,5 +1,8 @@
-# Winops 🖥️ — Local-First Windows Operations Dashboard
+# WinOps - Local-First Windows Operations Dashboard
 
+<p align="center">
+  <img src="WinOps.jpg" alt="WinOps" width="400">
+</p>
 > **SysOps, NetOps, SecOps, DevOps, and AIOps in one native Windows desktop
 > app** — with Ollama-powered local AI. All analysis runs on your machine. No
 > telemetry. No cloud accounts required. 🛡️
@@ -13,6 +16,12 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Local%20AI-black.svg)](https://ollama.com)
 
 ---
+
+## Fun things you can do
+
+- One pane of glass for your entire Windows machine - CPU, RAM, network, security
+- Ask the local AI "what's wrong with my PC?" and get a diagnosis
+- ~36 MB native app - installs in seconds
 
 ## 🎬 The story — why this exists
 
