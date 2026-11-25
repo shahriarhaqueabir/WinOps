@@ -3,6 +3,7 @@
 <p align="center">
   <img src="WinOps.jpg" alt="WinOps" width="400">
 </p>
+
 > **SysOps, NetOps, SecOps, DevOps, and AIOps in one native Windows desktop
 > app** — with Ollama-powered local AI. All analysis runs on your machine. No
 > telemetry. No cloud accounts required. 🛡️
