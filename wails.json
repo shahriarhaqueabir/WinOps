@@ -1,23 +1,23 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "Winops",
-  "outputfilename": "Winops",
+  "name": "WinOps",
+  "outputfilename": "WinOps",
   "frontend:dir": "cmd/winops-gui/frontend",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "http://127.0.0.1:5173",
   "info": {
-    "productName": "Winops Operations Platform",
+    "productName": "WinOps Operations Platform",
     "productVersion": "1.6.4",
-    "copyright": "Copyright 2026 Winops",
+    "copyright": "Copyright 2026 WinOps",
     "comments": "High-Performance Technical Operations Intelligence"
   },
   "nsis": {
     "custom": ""
   },
   "author": {
-    "name": "Winops",
+    "name": "WinOps",
     "email": "noreply@winops.invalid"
   }
 }
