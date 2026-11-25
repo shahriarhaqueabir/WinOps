@@ -185,7 +185,7 @@ flowchart LR
 ### Development
 
 ```bash
-git clone https://github.com/shahriarhaqueabir/Winops.git
+git clone https://github.com/shahriarhaqueabir/WinOps.git
 cd Winops
 wails dev   # hot reload
 ```
@@ -295,7 +295,6 @@ Open source (MIT), community welcome:
 
 | View 1 | View 2 | View 3 |
 |---|---|---|
-| ![screenshot 1](docs/screenshots/1.png) | ![screenshot 2](docs/screenshots/2.png) | ![screenshot 3](docs/screenshots/3.png) |
 
 > Add your own screenshots under docs/screenshots/.
 
