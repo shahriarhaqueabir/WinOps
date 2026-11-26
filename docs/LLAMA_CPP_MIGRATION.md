@@ -17,22 +17,22 @@ Winops already has a multi-provider architecture:
 3. Otherwise → fall back to Ollama
 
 ## Pre-Updated Config (2026-11-18)
-- `UNIVERSALOPS_MODELS_DIR` set to `E:\Projects\ai\models` (user-level env var)
-- `E:\Projects\ai\models\` contains Qwythos-9B Q4_K_M
-- llama.cpp v1.0.0 on PATH at `E:\Projects\tools\llama-b12359\`
+- `UNIVERSALOPS_MODELS_DIR` set to `<models directory>` (user-level env var)
+- `<models directory>\` contains Qwythos-9B Q4_K_M
+- llama.cpp v1.0.0 on PATH at `<llama.cpp install directory>`
 - No .env file in Winops (uses env vars + auto-detection)
 
 Code already supports llama.cpp — main work is verification.
 
 ## What's Already Done
-- ✅ `UNIVERSALOPS_MODELS_DIR` set to `E:\Projects\ai\models`
-- ✅ llama.cpp v1.0.0 installed at `E:\Projects\tools\llama-b12359\` (on PATH)
-- ✅ GGUF model at `E:\Projects\ai\models\Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf`
+- ✅ `UNIVERSALOPS_MODELS_DIR` set to `<models directory>`
+- ✅ llama.cpp v1.0.0 installed at `<llama.cpp install directory>` (on PATH)
+- ✅ GGUF model at `<models directory>\Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf`
 
 ## Migration Steps
 
 ### Phase 1: Verify Auto-Detection Works
-1. Build Winops: `cd E:\Projects\repos\personal\Winops && go build ./...`
+1. Build Winops: `cd <repo root> && go build ./...`
 2. Run: `go run .` or launch the GUI
 3. Check logs — should auto-detect llama-server (since binary is on PATH and models dir is set)
 4. Verify `ProviderOpenAI` is selected (not `ProviderOllama`)
@@ -41,9 +41,9 @@ Code already supports llama.cpp — main work is verification.
 If you want `~/.winops/models/` to point to the new location:
 ```powershell
 # Create symlink
-New-Item -ItemType Junction -Path "$env:USERPROFILE\.winops\models" -Target "E:\Projects\ai\models"
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.winops\models" -Target "<models directory>"
 ```
-Or update `llama.go` line 36 to default to `E:\Projects\ai\models`.
+Or update `llama.go` line 36 to default to `<models directory>`.
 
 ### Phase 3: Test Inference
 1. Launch Winops GUI
@@ -69,8 +69,8 @@ Or update `llama.go` line 36 to default to `E:\Projects\ai\models`.
 - `internal/aiops/provider.go` — provider selection (already correct)
 
 ## Dependencies
-- llama.cpp v1.0.0 at `E:\Projects\tools\llama-b12359\` (on PATH)
-- GGUF model at `E:\Projects\ai\models\`
+- llama.cpp v1.0.0 at `<llama.cpp install directory>` (on PATH)
+- GGUF model at `<models directory>\`
 
 ## Estimated Effort
 - Phase 1-3: 1-2 hours (mostly verification)
@@ -80,4 +80,4 @@ Or update `llama.go` line 36 to default to `E:\Projects\ai\models`.
 ## Notes
 - Winops is the most migration-ready project — the architecture already supports llama.cpp
 - The main work is verification, not code changes
-- Consider adding a model picker UI that lists GGUF files from `E:\Projects\ai\models\`
+- Consider adding a model picker UI that lists GGUF files from `<models directory>\`

@@ -8,7 +8,7 @@
 > app** — with Ollama-powered local AI. All analysis runs on your machine. No
 > telemetry. No cloud accounts required. 🛡️
 
-[![CI](https://github.com/shahriarhaqueabir/Winops/actions/workflows/ci.yml/badge.svg)](https://github.com/shahriarhaqueabir/Winops/actions/workflows/ci.yml)
+[![CI](https://github.com/shahriarhaqueabir/WinOps/actions/workflows/ci.yml/badge.svg)](https://github.com/shahriarhaqueabir/WinOps/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](https://www.microsoft.com/windows)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8.svg)](https://go.dev)
