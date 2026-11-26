@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // validInterfaceName matches typical Windows interface names (letters, digits,

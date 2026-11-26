@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shahriarhaqueabir/Winops/internal/aiops"
-	"github.com/shahriarhaqueabir/Winops/internal/common"
-	"github.com/shahriarhaqueabir/Winops/internal/devops"
-	"github.com/shahriarhaqueabir/Winops/internal/netops"
-	"github.com/shahriarhaqueabir/Winops/internal/secops"
-	"github.com/shahriarhaqueabir/Winops/internal/sysops"
+	"github.com/shahriarhaqueabir/WinOps/internal/aiops"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/devops"
+	"github.com/shahriarhaqueabir/WinOps/internal/netops"
+	"github.com/shahriarhaqueabir/WinOps/internal/secops"
+	"github.com/shahriarhaqueabir/WinOps/internal/sysops"
 )
 
 // WorkflowAPI exposes reusable operational workflows to the frontend.

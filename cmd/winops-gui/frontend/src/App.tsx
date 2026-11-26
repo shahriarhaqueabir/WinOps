@@ -152,14 +152,14 @@ function App() {
       try {
         if ('Notification' in window) {
           if (Notification.permission === 'granted') {
-            new Notification('Winops: Critical Alert', {
+            new Notification('WinOps: Critical Alert', {
               body: msg,
               tag: `alert-${alert.id}`,
             })
           } else if (Notification.permission !== 'denied') {
             Notification.requestPermission().then((perm) => {
               if (perm === 'granted') {
-                new Notification('Winops: Critical Alert', {
+                new Notification('WinOps: Critical Alert', {
                   body: msg,
                   tag: `alert-${alert.id}`,
                 })

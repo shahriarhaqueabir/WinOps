@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // WiFiNetwork represents a visible WiFi access point.

@@ -11,7 +11,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
-	"github.com/shahriarhaqueabir/Winops/internal/app"
+	"github.com/shahriarhaqueabir/WinOps/internal/app"
 )
 
 //go:embed all:cmd/winops-gui/frontend/dist
@@ -28,7 +28,7 @@ func main() {
 	application := app.NewApp()
 
 	err := wails.Run(&options.App{
-		Title:     "Winops Operations Platform",
+		Title:     "WinOps Operations Platform",
 		Width:     1400,
 		Height:    900,
 		MinWidth:  1024,

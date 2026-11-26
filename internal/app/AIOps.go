@@ -20,10 +20,10 @@ import (
 
 	"github.com/shirou/gopsutil/v4/mem"
 
-	"github.com/shahriarhaqueabir/Winops/internal/aiops"
-	"github.com/shahriarhaqueabir/Winops/internal/aiops/mcp"
+	"github.com/shahriarhaqueabir/WinOps/internal/aiops"
+	"github.com/shahriarhaqueabir/WinOps/internal/aiops/mcp"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // titleCaser replaces the deprecated strings.Title (removed guidance since
@@ -1107,10 +1107,10 @@ const (
 	qwen3_0_6B_Label = "Qwen3-0.6B"
 )
 
-// analystSystemPrompt is the shared system prompt for the Winops
+// analystSystemPrompt is the shared system prompt for the WinOps
 // System Analyst persona. Both SetupOllamaPersona and CreateOpsPersona
 // reference this constant so the prompt text cannot drift between code paths.
-const analystSystemPrompt = `You are the Winops System Analyst, a high-density technical co-pilot.
+const analystSystemPrompt = `You are the WinOps System Analyst, a high-density technical co-pilot.
 Objective: Synthesize complex telemetry into factual technical briefings.
 
 ### Operational Protocol
@@ -1302,7 +1302,7 @@ func (a *AIOps) SetupOllamaPersona(baseModel string) error {
 	}
 	modelfileContent := fmt.Sprintf(`FROM %s
 
-# System message for Winops System Analyst
+# System message for WinOps System Analyst
 SYSTEM """
 %s
 """
@@ -1422,7 +1422,7 @@ func (a *AIOps) CreateOpsPersona() error {
 		common.LogInfo("AIOps: winops.modelfile missing in data/. Creating default (Qwythos-9B).")
 		content := fmt.Sprintf(`FROM %s
 
-# System message for Winops System Analyst
+# System message for WinOps System Analyst
 SYSTEM """
 %s
 """
@@ -1517,7 +1517,7 @@ func (a *AIOps) DetectAnomalies() []AnomalyInfo {
 func (a *AIOps) AskAI(ctx context.Context, prompt string) (string, error) {
 	defer common.RecoverPanic()
 	messages := []aiops.ChatMessage{
-		{Role: "system", Content: "You are the Winops AI assistant, an expert operations analyst. Be concise and specific."},
+		{Role: "system", Content: "You are the WinOps AI assistant, an expert operations analyst. Be concise and specific."},
 		{Role: "user", Content: prompt},
 	}
 	return a.provider.Chat(ctx, messages, "")
@@ -1863,7 +1863,7 @@ If no changes are needed, return the current settings in the payload.`,
 
 	optStart := time.Now()
 	resp, err := a.provider.Chat(optCtx, []aiops.ChatMessage{
-		{Role: "system", Content: "You are the Winops Engine Optimizer. Output JSON only."},
+		{Role: "system", Content: "You are the WinOps Engine Optimizer. Output JSON only."},
 		{Role: "user", Content: prompt},
 	}, a.OptimizerModel)
 	optElapsed := time.Since(optStart)
@@ -1970,7 +1970,7 @@ Keep it technical and focused on system/network/security ops.`, objective)
 
 	// Use OptimizerModel for structured planning if available
 	resp, err := a.provider.Chat(a.ctx, []aiops.ChatMessage{
-		{Role: "system", Content: "You are the Winops Workflow Architect. Output JSON only."},
+		{Role: "system", Content: "You are the WinOps Workflow Architect. Output JSON only."},
 		{Role: "user", Content: prompt},
 	}, a.OptimizerModel)
 

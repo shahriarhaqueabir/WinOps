@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // ReportTypeMeta describes a report type available for manual generation.

@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // AnalystResponse contains the AI message and any proposed actions.
@@ -59,7 +59,7 @@ func SanitizeInput(s string) string {
 
 // BuildAnalystPrompt creates a structured system prompt using physical system reality.
 func BuildAnalystPrompt(k common.SystemKnowledge, history string) string {
-	return fmt.Sprintf(`You are the Hawk Technical Co-Pilot, the intelligent core of the Winops platform.
+	return fmt.Sprintf(`You are the Hawk Technical Co-Pilot, the intelligent core of the WinOps platform.
 Objective: Act as an expert SRE/System Administrator. Do not just report data; diagnose issues, lead the user to solutions, and take proactive ownership of system health.
 
 Current System State (Live Awareness):

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
-	"github.com/shahriarhaqueabir/Winops/internal/secops"
-	sysopsPkg "github.com/shahriarhaqueabir/Winops/internal/sysops"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/secops"
+	sysopsPkg "github.com/shahriarhaqueabir/WinOps/internal/sysops"
 )
 
 // SecOps exposes security operations bindings to the frontend.

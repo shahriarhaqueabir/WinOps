@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // FirewallRule represents a firewall rule.

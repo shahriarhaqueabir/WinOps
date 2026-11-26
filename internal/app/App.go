@@ -19,9 +19,9 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"github.com/shahriarhaqueabir/Winops/internal/aiops"
-	"github.com/shahriarhaqueabir/Winops/internal/common"
-	sysopsPkg "github.com/shahriarhaqueabir/Winops/internal/sysops"
+	"github.com/shahriarhaqueabir/WinOps/internal/aiops"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
+	sysopsPkg "github.com/shahriarhaqueabir/WinOps/internal/sysops"
 )
 
 // App is the main application struct bound to the Wails frontend.
@@ -331,7 +331,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.PipelineAPI.LoadSettings()
 	a.AIOps.LoadModels()
 
-	common.LogInfo("Winops initialized in self-contained mode (portable)")
+	common.LogInfo("WinOps initialized in self-contained mode (portable)")
 
 	// Initialize System Knowledge Layer (linked to Pipeline for consistency)
 	common.InitKnowledge(a.pipeline)
@@ -363,7 +363,7 @@ func (a *App) Startup(ctx context.Context) {
 
 // Shutdown is called by Wails when the application shuts down.
 func (a *App) Shutdown(ctx context.Context) {
-	common.LogInfo("Winops shutting down")
+	common.LogInfo("WinOps shutting down")
 
 	// 1. Terminate any active child processes (zombie prevention)
 	common.CleanupActiveProcesses()

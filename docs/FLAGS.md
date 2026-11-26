@@ -1,4 +1,4 @@
-# Flags & Review Notes — Winops (Winops)
+# Flags & Review Notes — WinOps (WinOps)
 
 ## Changes applied (README playbook rewrite)
 

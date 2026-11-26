@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // NetworkReport is a combined network diagnostic report.

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // KubernetesStatus holds kubectl and cluster connectivity info.

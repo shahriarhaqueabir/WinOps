@@ -33,7 +33,7 @@ type UpdateInfo struct {
 	Size           int64  `json:"size"`
 }
 
-const githubLatestReleaseURL = "https://api.github.com/repos/shahriarhaqueabir/Winops/releases/latest"
+const githubLatestReleaseURL = "https://api.github.com/repos/shahriarhaqueabir/WinOps/releases/latest"
 
 // CheckForUpdates queries the GitHub API for the latest release.
 func CheckForUpdates() (*UpdateInfo, error) {
@@ -45,8 +45,8 @@ func CheckForUpdates() (*UpdateInfo, error) {
 		return nil, fmt.Errorf("create update check request: %w", err)
 	}
 
-	// Identify as Winops for GitHub API best practices
-	req.Header.Set("User-Agent", "Winops-Update-Checker")
+	// Identify as WinOps for GitHub API best practices
+	req.Header.Set("User-Agent", "WinOps-Update-Checker")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

@@ -370,7 +370,7 @@ func applyPlatformSandbox(cmd *exec.Cmd, cfg SandboxConfig) *SandboxedCmd {
 		}
 
 		if cfg.DenyNetworkAccess {
-			sid, err := EnsureAppContainerProfile("WinopsIsolation", "Winops Network Isolation")
+			sid, err := EnsureAppContainerProfile("WinOpsIsolation", "WinOps Network Isolation")
 			if err == nil {
 				// We have a valid AppContainer SID.
 				// NOTE: Direct integration with os/exec via sa.AttributeList is deferred

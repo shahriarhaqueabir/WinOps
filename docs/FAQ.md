@@ -2,7 +2,7 @@
 
 ## General
 
-**Is Winops safe to run?**
+**Is WinOps safe to run?**
 Yes. It's local-first with no telemetry. Actions that modify system state are explicit and labeled in the UI.
 
 **Does it work offline?**
@@ -14,7 +14,7 @@ Windows (amd64). WebView2 is required.
 ## Installation
 
 **Do I need Go/Node/Wails to run it?**
-No. Download `Winops.exe` from [Releases](https://github.com/shahriarhaqueabir/Winops/releases).
+No. Download `WinOps.exe` from [Releases](https://github.com/shahriarhaqueabir/WinOps/releases).
 
 **WebView2 is missing — what do I do?**
 Install the [Evergreen WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) from Microsoft.
@@ -32,7 +32,7 @@ Yes. Set `AI_PROVIDER=llama` and place a GGUF model in your local models directo
 ## Troubleshooting
 
 **Some actions fail with access denied.**
-Run Winops as Administrator. Certain operations (firewall, services, processes, Defender) require elevated privileges.
+Run WinOps as Administrator. Certain operations (firewall, services, processes, Defender) require elevated privileges.
 
 **The app won't start.**
 - Verify WebView2 is installed.

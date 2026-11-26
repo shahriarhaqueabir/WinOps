@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
-	"github.com/shahriarhaqueabir/Winops/internal/devops"
-	"github.com/shahriarhaqueabir/Winops/internal/netops"
-	"github.com/shahriarhaqueabir/Winops/internal/secops"
-	"github.com/shahriarhaqueabir/Winops/internal/sysops"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/devops"
+	"github.com/shahriarhaqueabir/WinOps/internal/netops"
+	"github.com/shahriarhaqueabir/WinOps/internal/secops"
+	"github.com/shahriarhaqueabir/WinOps/internal/sysops"
 )
 
 // Validation constants for MCP tool arguments.
@@ -241,7 +241,7 @@ func (s *Server) ListTools() ([]Tool, error) {
 		},
 		{
 			Name:        "get_app_logs",
-			Description: "Search internal application logs (Winops system logs) by level and text pattern. Useful for self-diagnosis of app errors.",
+			Description: "Search internal application logs (WinOps system logs) by level and text pattern. Useful for self-diagnosis of app errors.",
 			InputSchema: json.RawMessage(`{"type":"object","properties":{"level":{"type":"string","description":"Log level filter (info, warn, error, debug)"},"search":{"type":"string","description":"Text to search for in log messages"},"limit":{"type":"integer","description":"Max entries (default 50)","default":50}},"required":[]}`),
 		},
 		{

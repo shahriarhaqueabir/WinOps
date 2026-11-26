@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // PingResult holds the results of a ping operation aligned with RFC 9951.
@@ -90,7 +90,7 @@ func pingICMP(target string, count int) (*PingResult, error) {
 			Body: &icmp.Echo{
 				ID:   i,
 				Seq:  i,
-				Data: []byte("WinopsNetOps"),
+				Data: []byte("WinOpsNetOps"),
 			},
 		}
 

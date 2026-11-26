@@ -220,7 +220,7 @@ interface AppInfo {
 }
 
 const DEFAULT_APP_INFO: AppInfo = {
-  name: 'Winops',
+  name: 'WinOps',
   version: '1.6.4',
   go_version: 'go1.26.5',
   uptime: '--',
@@ -460,10 +460,10 @@ export function Settings() {
                 </div>
               </div>
               <div className="pt-6 border-t border-[var(--color-border)]/50 mt-6 flex gap-6">
-                <a href="https://github.com/shahriarhaqueabir/Winops" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-[var(--color-accent)] hover:opacity-80 transition-colors">
+                <a href="https://github.com/shahriarhaqueabir/WinOps" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-[var(--color-accent)] hover:opacity-80 transition-colors">
                   <ExternalLink size={14} /> SOURCE CODE
                 </a>
-                <a href="https://github.com/shahriarhaqueabir/Winops#readme" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-[var(--color-accent)] hover:opacity-80 transition-colors">
+                <a href="https://github.com/shahriarhaqueabir/WinOps#readme" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-[var(--color-accent)] hover:opacity-80 transition-colors">
                   <ExternalLink size={14} /> DOCUMENTATION
                 </a>
               </div>

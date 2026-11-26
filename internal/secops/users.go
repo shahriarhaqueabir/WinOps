@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // validUsername matches safe username characters: letters, digits, dot, dash, underscore.

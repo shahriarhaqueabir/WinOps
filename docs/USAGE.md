@@ -1,10 +1,10 @@
 # Usage Guide
 
-This guide covers the high-level workflow for Winops. Screenshots referenced here can be placed in `docs/assets/`.
+This guide covers the high-level workflow for WinOps. Screenshots referenced here can be placed in `docs/assets/`.
 
 ## First Launch
 
-1. Launch `Winops.exe` as Administrator for full remediation capabilities.
+1. Launch `WinOps.exe` as Administrator for full remediation capabilities.
 2. The Dashboard loads a live snapshot of your system (CPU, memory, disk, network, alerts).
 3. If you plan to use the AI Assistant, ensure [Ollama](https://ollama.com) is running locally.
 
@@ -43,4 +43,4 @@ This guide covers the high-level workflow for Winops. Screenshots referenced her
 - **Local-only by design**: Avoid exporting sensitive logs to untrusted locations.
 - **Workflows**: Use the Workflows/Reports tabs to standardize recurring checks.
 - **Ollama offline**: If Ollama is unreachable, AIOps will report status; other modules remain fully functional.
-- **AI is optional**: Winops works fully without any AI backend. To enable AI, install Ollama or a llama.cpp `llama-server.exe` yourself (see README "Optional: local AI") and select a `.gguf` model in Settings → Models. Winops never downloads a runtime or model automatically.
+- **AI is optional**: WinOps works fully without any AI backend. To enable AI, install Ollama or a llama.cpp `llama-server.exe` yourself (see README "Optional: local AI") and select a `.gguf` model in Settings → Models. WinOps never downloads a runtime or model automatically.

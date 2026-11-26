@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // actionErrorHints maps common exit code patterns to user-friendly messages per action.
@@ -18,17 +18,17 @@ func actionErrorHint(action SystemAction, err error, output string) string {
 		strings.Contains(lower, "required privilege") || strings.Contains(lower, "elevated") {
 		switch action {
 		case ActionFlushDNS:
-			return "DNS cache flush requires administrator privileges. Run Winops as Administrator."
+			return "DNS cache flush requires administrator privileges. Run WinOps as Administrator."
 		case ActionClearTemp:
 			return "Clearing temp files needs administrator rights for some system folders. Run as Administrator."
 		case ActionDiskCleanup:
-			return "Disk Cleanup requires administrator privileges. Run Winops as Administrator."
+			return "Disk Cleanup requires administrator privileges. Run WinOps as Administrator."
 		case ActionDefrag:
-			return "Defragmentation requires administrator privileges. Run Winops as Administrator."
+			return "Defragmentation requires administrator privileges. Run WinOps as Administrator."
 		case ActionRestartService:
-			return "Restarting services requires administrator privileges. Run Winops as Administrator."
+			return "Restarting services requires administrator privileges. Run WinOps as Administrator."
 		default:
-			return "This action requires administrator privileges. Run Winops as Administrator."
+			return "This action requires administrator privileges. Run WinOps as Administrator."
 		}
 	}
 

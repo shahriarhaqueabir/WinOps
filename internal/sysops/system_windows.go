@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 	"github.com/yusufpapurcu/wmi"
 )
 

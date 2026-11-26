@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // DiskEncryption holds disk encryption status.

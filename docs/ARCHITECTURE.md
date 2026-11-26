@@ -1,15 +1,15 @@
-# Winops — Architecture
+# WinOps — Architecture
 
 This document describes the internal architecture for contributors and reviewers.
 
 ## High-Level Overview
 
-Winops is a Wails v2 desktop app. A Go backend exposes bound methods to a React/TypeScript frontend rendered in WebView2. All state is local (SQLite). A collector-based engine loop drives telemetry, alerting, and events at a 2-second cadence.
+WinOps is a Wails v2 desktop app. A Go backend exposes bound methods to a React/TypeScript frontend rendered in WebView2. All state is local (SQLite). A collector-based engine loop drives telemetry, alerting, and events at a 2-second cadence.
 
 ## Package Layout
 
 ```
-Winops/
+WinOps/
 ├── main.go / main_windows.go       # Wails entry, prereq checks
 ├── internal/
 │   ├── app/                        # Wails-bound facades (App, SysOps, NetOps, SecOps, DevOps, AIOps, Dashboard, …)
@@ -88,7 +88,7 @@ Collectors → MetricSample → DataPipeline (time-series)
 
 ## Build & Release
 
-- `wails build` produces `build/bin/Winops.exe` (~36 MB).
+- `wails build` produces `build/bin/WinOps.exe` (~36 MB).
 - Frontend embedded via `//go:embed all:cmd/winops-gui/frontend/dist`.
 - No CGO (pure-Go SQLite) for reproducible builds.
 

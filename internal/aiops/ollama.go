@@ -246,7 +246,7 @@ func DeleteModelWithContext(ctx context.Context, name string) error {
 // ── OllamaClient Implementation ─────────────────────────────────────────────
 
 // OllamaClient is a minimal Ollama HTTP API client. It intentionally implements
-// only the endpoints Winops uses, avoiding a dependency on Ollama's full
+// only the endpoints WinOps uses, avoiding a dependency on Ollama's full
 // server module and its transitive packages.
 type OllamaClient struct {
 	httpClient     *http.Client

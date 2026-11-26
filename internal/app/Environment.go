@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
-	"github.com/shahriarhaqueabir/Winops/internal/netops"
-	"github.com/shahriarhaqueabir/Winops/internal/sysops"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/netops"
+	"github.com/shahriarhaqueabir/WinOps/internal/sysops"
 )
 
 // DiscoverEnvironment gathers comprehensive information about the host environment.

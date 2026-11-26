@@ -1,9 +1,9 @@
-# Migration Plan: Ollama → llama.cpp (Winops)
+# Migration Plan: Ollama → llama.cpp (WinOps)
 
 ## Status: PARTIALLY DONE — needs path update and model verification — Config pre-updated 2026-11-18
 
 ## Current State
-Winops already has a multi-provider architecture:
+WinOps already has a multi-provider architecture:
 - `internal/aiops/provider.go` — `AIProvider` interface with Ollama, Llama, and OpenAI variants
 - `internal/aiops/llama.go` — in-process GGUF inference via goccy/go-llama
 - `internal/aiops/llamaserver.go` — manages a llama-server subprocess
@@ -20,7 +20,7 @@ Winops already has a multi-provider architecture:
 - `UNIVERSALOPS_MODELS_DIR` set to `<models directory>` (user-level env var)
 - `<models directory>\` contains Qwythos-9B Q4_K_M
 - llama.cpp v1.0.0 on PATH at `<llama.cpp install directory>`
-- No .env file in Winops (uses env vars + auto-detection)
+- No .env file in WinOps (uses env vars + auto-detection)
 
 Code already supports llama.cpp — main work is verification.
 
@@ -32,7 +32,7 @@ Code already supports llama.cpp — main work is verification.
 ## Migration Steps
 
 ### Phase 1: Verify Auto-Detection Works
-1. Build Winops: `cd <repo root> && go build ./...`
+1. Build WinOps: `cd <repo root> && go build ./...`
 2. Run: `go run .` or launch the GUI
 3. Check logs — should auto-detect llama-server (since binary is on PATH and models dir is set)
 4. Verify `ProviderOpenAI` is selected (not `ProviderOllama`)
@@ -46,7 +46,7 @@ New-Item -ItemType Junction -Path "$env:USERPROFILE\.winops\models" -Target "<mo
 Or update `llama.go` line 36 to default to `<models directory>`.
 
 ### Phase 3: Test Inference
-1. Launch Winops GUI
+1. Launch WinOps GUI
 2. Open AI Ops → Chat
 3. Send a test message
 4. Verify response comes from llama-server (check logs for "provider: openai")
@@ -78,6 +78,6 @@ Or update `llama.go` line 36 to default to `<models directory>`.
 - Total: ~2-3 hours (focused session)
 
 ## Notes
-- Winops is the most migration-ready project — the architecture already supports llama.cpp
+- WinOps is the most migration-ready project — the architecture already supports llama.cpp
 - The main work is verification, not code changes
 - Consider adding a model picker UI that lists GGUF files from `<models directory>\`

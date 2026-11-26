@@ -1,6 +1,6 @@
-# Winops Workflows
+# WinOps Workflows
 
-This document catalogs the operational workflows shipped with Winops, plus how
+This document catalogs the operational workflows shipped with WinOps, plus how
 the workflow engine behaves. Workflows are multi-step, read-mostly operational
 sequences you can run from **Workflows & Reports** in the UI (or via
 `WorkflowAPI`). Each step is executed in order; the workflow **aborts on the
@@ -191,7 +191,7 @@ first failing step** (transactional by default).
 
 ## Custom workflows
 
-Winops also supports user-defined workflows:
+WinOps also supports user-defined workflows:
 
 - `WorkflowAPI.SaveCustomWorkflow(def)` persists a `WorkflowDefinition` to
   SQLite (`UpsertCustomWorkflow`).

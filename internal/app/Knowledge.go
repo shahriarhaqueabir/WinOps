@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // KnowledgeAPI exposes the unified System Knowledge Layer to the frontend.

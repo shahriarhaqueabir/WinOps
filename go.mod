@@ -1,4 +1,4 @@
-module github.com/shahriarhaqueabir/Winops
+module github.com/shahriarhaqueabir/WinOps
 
 go 1.26.0
 

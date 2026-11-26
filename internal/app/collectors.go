@@ -8,9 +8,9 @@ import (
 	"github.com/shirou/gopsutil/v4/load"
 	"github.com/shirou/gopsutil/v4/sensors"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
-	"github.com/shahriarhaqueabir/Winops/internal/netops"
-	"github.com/shahriarhaqueabir/Winops/internal/sysops"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/netops"
+	"github.com/shahriarhaqueabir/WinOps/internal/sysops"
 )
 
 // ── CPU Collector ────────────────────────────────────────────────────────────

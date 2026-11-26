@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/shahriarhaqueabir/Winops/internal/common"
+	"github.com/shahriarhaqueabir/WinOps/internal/common"
 )
 
 // AlertAPI exposes alert management bindings to the frontend.

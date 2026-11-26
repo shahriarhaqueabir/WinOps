@@ -30,7 +30,7 @@ Modern IT ops tooling is fragmented and cloud-dependent: Task Manager,
 PowerShell, `netsh`, Wireshark, Docker Desktop, kubectl, Defender consoles, and
 a browser full of SaaS dashboards — each phoning home, each with its own auth.
 At 2 AM on an air-gapped network you need answers _now_, not a login screen.
-Winops collapses that stack into a single native Windows desktop app
+WinOps collapses that stack into a single native Windows desktop app
 running entirely offline: hardware/process telemetry, network diagnostics,
 security posture, container/K8s management, and a local AI analyst. Nothing
 leaves the machine. 🌙
@@ -143,7 +143,7 @@ flowchart LR
 
 ### Phase 6 — Ship 🚢
 
-21. `wails build` → `build/bin/Winops.exe`.
+21. `wails build` → `build/bin/WinOps.exe`.
 22. Go tests + frontend build. Release on GitHub.
 
 ---
@@ -186,7 +186,7 @@ flowchart LR
 
 ```bash
 git clone https://github.com/shahriarhaqueabir/WinOps.git
-cd Winops
+cd WinOps
 wails dev   # hot reload
 ```
 
@@ -194,7 +194,7 @@ wails dev   # hot reload
 
 ```bash
 wails build
-# Executable: build/bin/Winops.exe
+# Executable: build/bin/WinOps.exe
 ```
 
 ### Tests
@@ -206,24 +206,24 @@ cd cmd/winops-gui/frontend && npm run build
 
 ## 📦 Download & install (recommended)
 
-1. Download latest Windows build from [Releases](https://github.com/shahriarhaqueabir/Winops/releases).
+1. Download latest Windows build from [Releases](https://github.com/shahriarhaqueabir/WinOps/releases).
 2. Install [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
-3. Run `Winops.exe`. No installer required.
+3. Run `WinOps.exe`. No installer required.
 
 > Some features require Administrator privileges.
 
 ### Portable zip recipe (no installer)
 
-Winops supports a portable layout: keep `Winops.exe` and a `data/` folder
+WinOps supports a portable layout: keep `WinOps.exe` and a `data/` folder
 together in one directory. When a `data/` folder exists next to the exe,
-Winops uses it for the database, logs, baselines, and models instead of
+WinOps uses it for the database, logs, baselines, and models instead of
 `%APPDATA%\winops`.
 
 Recommended portable layout:
 
 ```
-Winops/
-├── Winops.exe
+WinOps/
+├── WinOps.exe
 └── data/
     ├── winops.db          (created on first run)
     ├── models/            (optional GGUF models)
@@ -231,31 +231,31 @@ Winops/
 ```
 
 To make a portable copy: unzip the release, create an empty `data/` folder
-beside `Winops.exe`, and launch. Zip the whole folder to move it between
+beside `WinOps.exe`, and launch. Zip the whole folder to move it between
 machines. Nothing is installed system-wide.
 
 ### Optional: local AI (user-managed, never auto-downloaded)
 
-Winops never downloads an AI runtime or model for you. Pick one of the two
-supported backends and install it yourself, then point Winops at it:
+WinOps never downloads an AI runtime or model for you. Pick one of the two
+supported backends and install it yourself, then point WinOps at it:
 
 **Option A — Ollama (easiest)**
 1. Install Ollama from https://ollama.com/download
 2. Pull a model: `ollama pull llama3` (or qwen2.5, mistral, ...)
-3. Start Ollama (`ollama serve`) and launch Winops. AIOps auto-detects it.
+3. Start Ollama (`ollama serve`) and launch WinOps. AIOps auto-detects it.
 
 **Option B — llama.cpp (GPU, bundled-server mode)**
 1. Download a Windows CUDA build of `llama-server.exe` from the
    [llama.cpp releases](https://github.com/ggerganov/llama.cpp/releases).
 2. Place the `llama-b10952-bin-win-cuda-x64/` folder (or your own build)
-   next to `Winops.exe` so `llama-server.exe` resolves, OR set the
+   next to `WinOps.exe` so `llama-server.exe` resolves, OR set the
    `LLAMA_SERVER_PATH` environment variable to its full path.
 3. Download a `.gguf` model of your choice and put it in `data/models/`
    (or set `UNIVERSALOPS_MODEL_PATH` / `UNIVERSALOPS_MODELS_DIR`).
-4. Launch Winops — it will start and manage `llama-server` as a child process.
+4. Launch WinOps — it will start and manage `llama-server` as a child process.
 
 In the app, use **Settings → Models** to select the `.gguf` file you
-downloaded. Winops only ever reads a file you explicitly choose; it does
+downloaded. WinOps only ever reads a file you explicitly choose; it does
 not fetch or install anything.
 
 ## 📟 Modules
@@ -284,7 +284,7 @@ not fetch or install anything.
 
 Open source (MIT), community welcome:
 
-- 🐛 Bug reports / ideas → [issues](https://github.com/shahriarhaqueabir/Winops/issues)
+- 🐛 Bug reports / ideas → [issues](https://github.com/shahriarhaqueabir/WinOps/issues)
 - 🔀 PRs: focused, tested, documented
 - 🆘 Help wanted: test coverage, cross-platform hardening, new collectors, UI polish, translations
 - 🔐 Security: private issue or direct contact
@@ -307,7 +307,7 @@ Open source (MIT), community welcome:
 
 ## 📜 License
 
-[MIT](LICENSE) © Winops
+[MIT](LICENSE) © WinOps
 
 ---
 
